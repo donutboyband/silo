@@ -1,0 +1,36 @@
+# Tool versions and tasks for silo. `mise install` gets the right Node,
+# then `mise run <task>` (or plain npm scripts) does the rest.
+
+[tools]
+# Astro 7 needs at least 22.23.4 (see "engines" in package.json).
+# Keep in sync with .node-version (which Cloudflare Workers Builds reads).
+node = "22.23.4"
+
+[tasks.install]
+description = "Install dependencies"
+run = "npm ci"
+
+[tasks.dev]
+description = "Start the dev server (http://localhost:4321)"
+run = "npm run dev"
+
+[tasks.build]
+description = "Build the static site into dist/"
+run = "npm run build"
+
+[tasks.preview]
+description = "Build, then serve dist/ locally with Astro's preview server"
+depends = ["build"]
+run = "npm run preview"
+
+[tasks.serve]
+description = "Build, then serve it locally exactly as Cloudflare will (headers, 404s)"
+run = "npm run serve"
+
+[tasks.deploy]
+description = "Build and deploy to Cloudflare (needs `npx wrangler login` first)"
+run = "npm run deploy"
+
+[tasks.clean]
+description = "Remove build output and Astro's cache"
+run = "rm -rf dist .astro"

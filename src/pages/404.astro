@@ -1,0 +1,30 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base>
+  <main>
+    <p class="code">404</p>
+    <p>Not in the silo.</p>
+    <a href="/">Back to the list ↗</a>
+  </main>
+</Base>
+
+<style>
+  main {
+    padding: 12px 16px 48px;
+    font-size: clamp(30px, 9vw, 120px);
+    font-weight: 800;
+    line-height: 0.94;
+    text-transform: uppercase;
+  }
+  p {
+    margin: 0;
+  }
+  .code {
+    color: #ff5b26;
+  }
+  a:hover {
+    color: var(--fg);
+  }
+</style>

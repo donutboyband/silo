@@ -1,0 +1,23 @@
+// silo on Cloudflare Workers: an assets-only Worker (no server code) serving
+// the static Astro build in dist/.
+// Deploy with `mise run deploy` (builds, then `wrangler deploy`).
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "silo", // must match the Worker's name in the Cloudflare dashboard
+  "compatibility_date": "2026-11-08",
+  "assets": {
+    "directory": "./dist",
+    // unknown paths get dist/404.html with a 404 status
+    "not_found_handling": "404-page",
+  },
+  // Cloudflare creates and owns the DNS records for these. It refuses a hostname
+  // that already has A/AAAA/CNAME records, so delete those first if adding more.
+  "routes": [
+    { "pattern": "silorecording.com", "custom_domain": true },
+    { "pattern": "www.silorecording.com", "custom_domain": true },
+  ],
+  // silorecording.com is the only public address: no <name>.<account>.workers.dev copy,
+  // and no per-version preview URLs
+  "workers_dev": false,
+  "preview_urls": false,
+}
