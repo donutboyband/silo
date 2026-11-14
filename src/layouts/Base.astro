@@ -1,9 +1,15 @@
 ---
 import '../styles/silo.css';
 
-const title = 'Silo';
-const description =
-  'Silo: Silo Recording, DeCamp, tools for creators, and a software label.';
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = 'Silo',
+  description = 'Silo: Silo Recording, DeCamp, tools for creators, and a software label.',
+} = Astro.props;
 ---
 
 <!doctype html>

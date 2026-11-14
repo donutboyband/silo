@@ -1,67 +1,515 @@
 ---
 import Base from '../layouts/Base.astro';
-import { pillars, label } from '../data/catalog';
+import { pillars, label, banner, social, about } from '../data/catalog';
+import PlaceMap from '../components/PlaceMap.astro';
+import SocialIcon from '../components/SocialIcon.astro';
+
+const socialMenus = [
+  { id: 'instagram' as const, title: 'Instagram', accounts: social.instagram },
+  { id: 'twitter' as const, title: 'X / Twitter', accounts: social.twitter },
+];
+
+// A silo's own Instagram / X account, looked up by name in `social`.
+const accountFor = (menu: (typeof socialMenus)[number], name: string) =>
+  menu.accounts.find((a) => a.name === name);
+
+// Enough copies that one group is wider than any screen; the track holds two
+// groups and slides left by exactly one, so the loop has no seam.
+const copies = Array.from({ length: 8 });
+const isExternal = (url?: string) => !!url?.startsWith('http');
 ---
 
 <Base>
-  <a class="contact" href={`mailto:${label.contact}`}>Contact↗</a>
+  <div class="top">
+    {
+      socialMenus.map((m) => (
+        <div class="menu">
+          <button
+            class="top-link icon-link"
+            type="button"
+            aria-expanded="false"
+            aria-controls={`${m.id}-panel`}
+            aria-label={m.title}
+          >
+            <SocialIcon kind={m.id} />
+          </button>
+          <div class="drop social-panel" id={`${m.id}-panel`} hidden>
+            <p class="sub-title">{m.title}</p>
+            <ul class="accounts">
+              {m.accounts.map((a) => (
+                <li data-pillar={a.key}>
+                  {a.url ? (
+                    <a class="acct" href={a.url} target="_blank" rel="noopener">
+                      <span class="acct-name">{a.name}</span>
+                      <span class="acct-handle">{a.handle ?? ''} ↗</span>
+                    </a>
+                  ) : (
+                    <span class="acct soon-acct">
+                      <span class="acct-name">{a.name}</span>
+                      <span class="acct-handle">Soon</span>
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      ))
+    }
+
+    <div class="menu">
+      <button
+        class="top-link"
+        type="button"
+        id="sub-toggle"
+        aria-expanded="false"
+        aria-controls="sub-panel"
+      >
+        Subscribe<span class="caret" aria-hidden="true">↓</span>
+      </button>
+
+      {/* Placeholder: no newsletter service yet, so this sends nothing. */}
+      <form class="drop sub-panel" id="sub-panel" hidden novalidate>
+        <p class="sub-title">Get updates by email</p>
+        <fieldset>
+          <legend class="sr">What would you like to hear about?</legend>
+          <label class="opt" data-pillar="all">
+            <input type="checkbox" name="list" value="all" data-all />
+            <span class="box" aria-hidden="true"></span>
+            All Silo updates
+          </label>
+          <label class="opt" data-pillar="recording">
+            <input type="checkbox" name="list" value="recording" data-one />
+            <span class="box" aria-hidden="true"></span>
+            Silo Recording
+          </label>
+          <label class="opt" data-pillar="decamp">
+            <input type="checkbox" name="list" value="decamp" data-one />
+            <span class="box" aria-hidden="true"></span>
+            DeCamp
+          </label>
+          <label class="opt" data-pillar="label">
+            <input type="checkbox" name="list" value="label" data-one />
+            <span class="box" aria-hidden="true"></span>
+            Software Label
+          </label>
+        </fieldset>
+        <label class="sr" for="sub-email">Email address</label>
+        <div class="sub-row">
+          <input
+            id="sub-email"
+            type="email"
+            name="email"
+            placeholder="you@email.com"
+            autocomplete="email"
+            required
+          />
+          <button type="submit">Sign up</button>
+        </div>
+        <p class="sub-note" role="status"></p>
+      </form>
+    </div>
+
+    <a class="top-link" href={`mailto:${label.contact}`}>Contact↗</a>
+  </div>
 
   <main>
-    <h1 class="row">
-      <span class="tag"><i>est</i>{label.year}</span>
-      <span class="name">Silo</span>
+    {/* The title is the way into About. */}
+    <h1>
+      <button
+        class="row about-btn"
+        type="button"
+        data-open="silo-about"
+        aria-haspopup="dialog"
+        aria-expanded="false"
+        aria-label="Silo: about us"
+      >
+        <span class="tag"><i>About</i>↗</span>
+        <span class="name">Silo</span>
+      </button>
     </h1>
 
-    {
-      pillars.map((p) => (
-        <section data-pillar={p.key}>
-          <h2 class="row head">
-            <span class="tag slash">///</span>
+    <a class="ticker" href={banner.url}>
+      <span class="sr">{banner.text}</span>
+      <span class="track" aria-hidden="true">
+        {
+          [0, 1].map(() => (
+            <span class="group">
+              {copies.map(() => (
+                <span class="msg">
+                  {banner.text}
+                  <span class="sep">///</span>
+                </span>
+              ))}
+            </span>
+          ))
+        }
+      </span>
+    </a>
+
+    {/* The chosen form: ring layout, ink look. The CSS still has "row" and
+        "cluster" layouts and a "glow" look, should these ever change. */}
+    <div class="stage" data-arrange="ring" data-look="ink">
+      <ul class="silos">
+        {
+          pillars.map((p, i) => (
+            <li data-pillar={p.key} class={`s${i + 1}`}>
+              <button
+                class="silo"
+                type="button"
+                data-open={`silo-${p.key}`}
+                aria-haspopup="dialog"
+                aria-expanded="false"
+                aria-label={p.name}
+              >
+                <span class="disc">
+                  {/* Placeholder marks from the brand kit (round 3). */}
+                  <img class="mark" src={`/silo/marks/${p.key}.svg`} alt="" width="400" height="400" />
+                  {/* The name set around the circle's edge, once along the top
+                      and once along the bottom (so it never reads upside
+                      down). Each layout shows one and turns it to face out. */}
+                  <svg class="arc" viewBox="0 0 100 100" aria-hidden="true">
+                    <path id={`arc-top-${p.key}`} d="M 12 50 A 38 38 0 0 1 88 50" fill="none" />
+                    <path id={`arc-bot-${p.key}`} d="M 5.5 50 A 44.5 44.5 0 0 0 94.5 50" fill="none" />
+                    <text class="arc-top">
+                      <textPath href={`#arc-top-${p.key}`} startOffset="50%" text-anchor="middle">
+                        {p.name}
+                      </textPath>
+                    </text>
+                    <text class="arc-bot">
+                      <textPath href={`#arc-bot-${p.key}`} startOffset="50%" text-anchor="middle">
+                        {p.name}
+                      </textPath>
+                    </text>
+                  </svg>
+                </span>
+              </button>
+            </li>
+          ))
+        }
+      </ul>
+
+      {/* Names under the stack. Mouse-only duplicates of the circles, so
+          screen readers and keyboards skip them. */}
+      <ol class="legend" aria-hidden="true">
+        {
+          pillars.map((p, i) => (
+            <li data-pillar={p.key}>
+              <button type="button" tabindex="-1" data-open-via={`silo-${p.key}`}>
+                <span class="no">#{String(i + 1).padStart(2, '0')}</span>
+                {p.name}
+              </button>
+            </li>
+          ))
+        }
+      </ol>
+    </div>
+  </main>
+
+  {/* ---------- About: opens from the SILO title ---------- */}
+  <dialog class="panel" id="silo-about" data-pillar="about" aria-labelledby="silo-about-title">
+    <div class="inner">
+      <button class="close" type="button" data-close>
+        Close ✕
+      </button>
+
+      <h2 class="panel-title row" id="silo-about-title">
+        <span class="tag"><i>est</i>{label.year}</span>
+        <span class="name">About Silo</span>
+      </h2>
+
+      <div class="about-body">
+        {about.summary.map((t) => <p class="about-lede">{t}</p>)}
+      </div>
+
+      <section class="about-sec">
+        <h3 class="about-h">The four silos</h3>
+        <ol class="about-silos">
+          {
+            pillars.map((p, i) => (
+              <li data-pillar={p.key}>
+                <span class="swatch" aria-hidden="true" />
+                <span class="about-silo-no">#{String(i + 1).padStart(2, '0')}</span>
+                <span class="about-silo-name">{p.name}</span>
+                <span class="about-silo-desc">{p.desc}</span>
+              </li>
+            ))
+          }
+        </ol>
+      </section>
+
+      <section class="about-sec">
+        <h3 class="about-h">Team</h3>
+        <ul class="team">
+          {
+            about.team.map((m) => (
+              <li>
+                <p class="team-name">{m.name}</p>
+                <p class="team-role">{m.role}</p>
+                <p class="team-bio">{m.bio}</p>
+              </li>
+            ))
+          }
+        </ul>
+      </section>
+    </div>
+  </dialog>
+
+  {
+    pillars.map((p, i) => (
+      <dialog class="panel" id={`silo-${p.key}`} data-pillar={p.key} aria-labelledby={`silo-${p.key}-title`}>
+        <div class="inner">
+          <button class="close" type="button" data-close>
+            Close ✕
+          </button>
+
+          <h2 class="panel-title row" id={`silo-${p.key}-title`}>
+            <span class="tag">
+              <i>#</i>
+              {String(i + 1).padStart(2, '0')}
+            </span>
             <span class="name">{p.name}</span>
           </h2>
-          <ul>
+
+          <div class="panel-intro">
+            <p class="panel-desc">{p.desc}</p>
+
+            {/* Sign up and follow, just for this silo. Placeholder: sends nothing yet. */}
+            <div class="optin">
+              <form class="optin-form" novalidate>
+                <p class="optin-title">Get {p.name} updates</p>
+                <input type="hidden" name="list" value={p.key} />
+                <label class="sr" for={`optin-${p.key}`}>Email address</label>
+                <div class="optin-row">
+                  <input
+                    id={`optin-${p.key}`}
+                    type="email"
+                    name="email"
+                    placeholder="you@email.com"
+                    autocomplete="email"
+                    required
+                  />
+                  <button type="submit">Sign up</button>
+                </div>
+                <p class="optin-note" role="status"></p>
+              </form>
+
+              <div class="follow">
+                <span class="follow-label">Follow</span>
+                {socialMenus.map((m) => {
+                  const acct = accountFor(m, p.socialName);
+                  const name = `${p.socialName} on ${m.title}`;
+                  return acct?.url ? (
+                    <a class="follow-icon" href={acct.url} target="_blank" rel="noopener" aria-label={name}>
+                      <SocialIcon kind={m.id} />
+                    </a>
+                  ) : (
+                    <span class="follow-icon soon-icon" role="img" aria-label={`${name}, coming soon`} title="Coming soon">
+                      <SocialIcon kind={m.id} />
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Silos whose items are places (DeCamp) get a map; the rest a list. */}
+          {p.items.some((it) => it.at) ? (
+            <PlaceMap id={`silo-${p.key}`} items={p.items} />
+          ) : (
+          <ul class="items">
             {p.items.map((it) => {
               const Tag = it.soon || !it.url ? 'span' : 'a';
               return (
                 <li>
                   <Tag
-                    class:list={['row', 'item', { soon: it.soon }]}
+                    class:list={['item', { soon: it.soon }]}
                     href={Tag === 'a' ? it.url : undefined}
-                    target={Tag === 'a' && it.url?.startsWith('http') ? '_blank' : undefined}
-                    rel={Tag === 'a' && it.url?.startsWith('http') ? 'noopener' : undefined}
+                    target={Tag === 'a' && isExternal(it.url) ? '_blank' : undefined}
+                    rel={Tag === 'a' && isExternal(it.url) ? 'noopener' : undefined}
                   >
-                    <span class="tag">
-                      <i>#</i>
-                      {it.no}
+                    <span class="row item-head">
+                      <span class="tag">
+                        <i>#</i>
+                        {it.no}
+                      </span>
+                      <span class="item-name">
+                        {it.name}
+                        {Tag === 'a' && <span class="arr">↗</span>}
+                      </span>
                     </span>
-                    <span class="name">
-                      {it.name}
-                      {Tag === 'a' && <span class="arr">↗</span>}
-                    </span>
-                    <span class="desc">{it.soon ? `Soon. ${it.desc}` : it.desc}</span>
+                    <span class="item-desc">{it.soon ? `Soon. ${it.desc}` : it.desc}</span>
                   </Tag>
                 </li>
               );
             })}
           </ul>
-        </section>
-      ))
+          )}
+
+          {p.url && (
+            <a class="more" href={p.url}>
+              {p.urlLabel ?? 'More'} ↗
+            </a>
+          )}
+        </div>
+      </dialog>
+    ))
+  }
+</Base>
+
+<script>
+  // Each silo opens as a circle that grows out of the one you clicked until it
+  // fills the screen, then closes back into it. Everything is set through the
+  // Web Animations API, so the CSP never has to allow inline styles.
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)');
+  const ease = 'cubic-bezier(0.76, 0, 0.24, 1)';
+
+  // The button a panel opens from: a silo circle, or the SILO title for About.
+  const circleBtn = (id: string) => document.querySelector<HTMLElement>(`[data-open="${id}"]`)!;
+
+  function circles(btn: HTMLElement) {
+    // Grow from the silo's circle, or from the middle of the title.
+    const r = (btn.querySelector('.disc, .name') ?? btn).getBoundingClientRect();
+    const x = r.left + r.width / 2;
+    const y = r.top + r.height / 2;
+    const far = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+    return {
+      small: `circle(${Math.min(r.width, r.height) / 2}px at ${x}px ${y}px)`,
+      big: `circle(${far}px at ${x}px ${y}px)`,
+    };
+  }
+
+  function open(btn: HTMLElement) {
+    const panel = document.getElementById(btn.dataset.open!) as HTMLDialogElement;
+    panel.showModal();
+    panel.scrollTop = 0;
+    document.documentElement.classList.add('locked');
+    btn.setAttribute('aria-expanded', 'true');
+    if (reduce.matches) return;
+
+    const c = circles(btn);
+    panel.animate({ clipPath: [c.small, c.big] }, { duration: 750, easing: ease });
+    panel.querySelector('.inner')!.animate(
+      { opacity: [0, 1], transform: ['translateY(28px)', 'none'] },
+      { duration: 450, delay: 380, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)', fill: 'backwards' },
+    );
+  }
+
+  async function close(panel: HTMLDialogElement) {
+    if (panel.dataset.closing) return;
+    panel.dataset.closing = '1';
+    const btn = circleBtn(panel.id);
+
+    if (!reduce.matches) {
+      const c = circles(btn);
+      panel.querySelector('.inner')!.animate({ opacity: [1, 0] }, { duration: 160, fill: 'forwards' });
+      await panel.animate({ clipPath: [c.big, c.small] }, { duration: 600, easing: ease, fill: 'forwards' })
+        .finished;
     }
 
-    <p class="row next" aria-label="More soon">
-      <span class="tag"><i>#</i>?</span>
-      <span class="name"><span class="cursor"></span></span>
-    </p>
-  </main>
-</Base>
+    panel.close();
+    panel.getAnimations({ subtree: true }).forEach((a) => a.cancel());
+    delete panel.dataset.closing;
+    document.documentElement.classList.remove('locked');
+    btn.setAttribute('aria-expanded', 'false');
+    btn.focus();
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-open]').forEach((btn) => {
+    btn.addEventListener('click', () => open(btn));
+  });
+  // ---------- Top-right dropdowns (Instagram, X, Subscribe) ----------
+  // One open at a time; click outside or press Escape to close.
+  const toggles = [...document.querySelectorAll<HTMLElement>('.top [aria-controls]')];
+  const panelOf = (t: HTMLElement) => document.getElementById(t.getAttribute('aria-controls')!)!;
+
+  function setMenu(toggle: HTMLElement, open: boolean) {
+    toggles.forEach((t) => {
+      const show = t === toggle && open;
+      panelOf(t).hidden = !show;
+      t.setAttribute('aria-expanded', String(show));
+    });
+    if (open) panelOf(toggle).querySelector<HTMLElement>('input, a')?.focus();
+  }
+  toggles.forEach((t) => t.addEventListener('click', () => setMenu(t, panelOf(t).hidden)));
+  document.addEventListener('click', (e) => {
+    if (!(e.target as Element).closest('.menu')) toggles.forEach((t) => setMenu(t, false));
+  });
+  document.querySelectorAll<HTMLElement>('.top .drop').forEach((panel) =>
+    panel.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      const t = toggles.find((x) => panelOf(x) === panel)!;
+      setMenu(t, false);
+      t.focus();
+    }),
+  );
+
+  // ---------- Subscribe form ----------
+  const subPanel = document.getElementById('sub-panel') as HTMLFormElement;
+  const note = subPanel.querySelector<HTMLElement>('.sub-note')!;
+  const allBox = subPanel.querySelector<HTMLInputElement>('[data-all]')!;
+  const oneBoxes = [...subPanel.querySelectorAll<HTMLInputElement>('[data-one]')];
+
+  // "All Silo updates" ticks every list; unticking any one list unticks "All".
+  allBox.addEventListener('change', () => oneBoxes.forEach((b) => (b.checked = allBox.checked)));
+  oneBoxes.forEach((b) =>
+    b.addEventListener('change', () => (allBox.checked = oneBoxes.every((x) => x.checked))),
+  );
+
+  subPanel.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const email = subPanel.querySelector<HTMLInputElement>('#sub-email')!;
+    if (!oneBoxes.some((b) => b.checked)) {
+      note.textContent = 'Pick at least one thing to hear about.';
+    } else if (!email.checkValidity()) {
+      note.textContent = 'That email address doesn’t look right.';
+      email.focus();
+    } else {
+      // TODO: send to the newsletter service once one is chosen.
+      note.textContent = 'Thanks! Sign-ups aren’t live yet, so nothing was sent.';
+    }
+  });
+
+  // ---------- Per-silo sign-up forms (inside each open silo) ----------
+  document.querySelectorAll<HTMLFormElement>('.optin-form').forEach((form) => {
+    const out = form.querySelector<HTMLElement>('.optin-note')!;
+    const email = form.querySelector<HTMLInputElement>('input[type="email"]')!;
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!email.checkValidity()) {
+        out.textContent = 'That email address doesn’t look right.';
+        email.focus();
+      } else {
+        // TODO: send to the newsletter service (list: form.list.value) once one is chosen.
+        out.textContent = 'Thanks! Sign-ups aren’t live yet, so nothing was sent.';
+      }
+    });
+  });
+
+  // Clicking a name under the stack opens its silo out of the circle.
+  document.querySelectorAll<HTMLElement>('[data-open-via]').forEach((btn) => {
+    btn.addEventListener('click', () => open(circleBtn(btn.dataset.openVia!)));
+  });
+
+  document.querySelectorAll<HTMLDialogElement>('dialog.panel').forEach((panel) => {
+    // Escape key
+    panel.addEventListener('cancel', (e) => {
+      e.preventDefault();
+      close(panel);
+    });
+    panel.querySelector('[data-close]')!.addEventListener('click', () => close(panel));
+  });
+</script>
 
 <style>
   :global(body) {
     container-type: inline-size;
   }
+  :global(html.locked) {
+    overflow: hidden;
+  }
 
-  /* Size the type so the longest line ("Tools for Creators", 18 chars at
-     0.6em each, plus the tag column) runs edge to edge at any width. */
+  /* Size the title so it matches the original list's scale. */
   main {
     padding: 12px 16px 48px;
     font-size: calc((100cqw - 60px) / 11);
@@ -85,6 +533,10 @@ import { pillars, label } from '../data/catalog';
   [data-pillar='label'] {
     --c: #8fa8ff;
   }
+  /* "All" (Silo itself) in the top-right dropdowns stays white */
+  [data-pillar='all'] {
+    --c: var(--fg);
+  }
 
   h1,
   h2,
@@ -103,7 +555,7 @@ import { pillars, label } from '../data/catalog';
     column-gap: 0.3em;
   }
 
-  /* the little stacked "#" + number to the left of every line */
+  /* the little stacked "#" + number to the left of a line */
   .tag {
     flex: none;
     width: 1.7rem;
@@ -125,117 +577,843 @@ import { pillars, label } from '../data/catalog';
     color: var(--fg);
   }
 
-  .head {
-    color: var(--c);
-    margin-top: 0.35em;
+  /* the SILO title doubles as the About button */
+  .about-btn {
+    all: unset;
+    display: flex;
+    cursor: pointer;
   }
-  .slash {
-    color: var(--c);
-    font-size: 13px;
-    align-self: center;
-    padding: 0;
+  .about-btn .tag {
+    width: auto;
+    min-width: 1.7rem;
+    transition: color 0.2s;
   }
-
-  .item {
-    transition: color 0.1s;
+  .about-btn .name {
+    transition: color 0.2s;
   }
-  .arr {
-    visibility: hidden;
-    font-size: 0.7em;
-  }
-  .desc {
-    font-size: clamp(12px, 1.2cqw, 18px);
-    font-weight: 400;
-    line-height: 1.3;
-    letter-spacing: 0;
-    text-transform: none;
-    font-variation-settings: 'wdth' 100;
-    color: var(--c);
-  }
-
-  a.item:hover,
-  a.item:focus-visible {
+  .about-btn:hover .tag,
+  .about-btn:focus-visible .tag {
     color: var(--fg);
   }
-  .item:hover .arr,
-  .item:focus-visible .arr {
-    visibility: visible;
+  .about-btn:hover .name {
+    color: #d9d9d9;
+  }
+  .about-btn:focus-visible {
+    outline: 2px solid var(--fg);
+    outline-offset: 4px;
   }
 
-  /* With a mouse, the description is a caption pinned to the bottom-right
-     corner, so hovering never moves the list. */
+  /* ---------- About panel (white) ---------- */
+  [data-pillar='about'] {
+    --c: var(--fg);
+  }
+  .about-body {
+    margin-top: clamp(16px, 2.5vw, 36px);
+    max-width: 40ch;
+  }
+  .about-lede {
+    font-size: clamp(18px, 2.2vw, 32px);
+    font-weight: 600;
+    line-height: 1.3;
+    font-variation-settings: 'wdth' 100;
+  }
+  .about-lede + .about-lede {
+    margin-top: 0.8em;
+  }
+  .about-sec {
+    margin-top: clamp(36px, 5vw, 72px);
+    padding-top: 14px;
+    border-top: 2px solid var(--bg);
+  }
+  .about-h {
+    margin: 0 0 18px;
+    font-size: 14px;
+    font-weight: 800;
+    text-transform: uppercase;
+    font-variation-settings: 'wdth' 100;
+  }
+  .about-silos {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 24px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .about-silos li {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .swatch {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--c);
+    border: 2px solid var(--bg);
+    margin-bottom: 4px;
+  }
+  .about-silo-no {
+    font-size: 12px;
+    font-weight: 600;
+    opacity: 0.6;
+    font-variation-settings: 'wdth' 100;
+  }
+  .about-silo-name {
+    font-size: clamp(20px, 2vw, 28px);
+    font-weight: 800;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  .about-silo-desc {
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.4;
+    font-variation-settings: 'wdth' 100;
+  }
+  .team {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px 40px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .team-name {
+    font-size: clamp(28px, 3.4vw, 52px);
+    font-weight: 800;
+    line-height: 0.95;
+    text-transform: uppercase;
+  }
+  .team-role {
+    margin-top: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-variation-settings: 'wdth' 100;
+    opacity: 0.6;
+  }
+  .team-bio {
+    margin-top: 10px;
+    max-width: 42ch;
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.45;
+    font-variation-settings: 'wdth' 100;
+  }
+  @media (max-width: 900px) {
+    .about-silos {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 560px) {
+    .about-silos,
+    .team {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* ---------- scrolling banner ---------- */
+  .ticker {
+    display: block;
+    margin: 0.2em -16px 0;
+    overflow: hidden;
+    background: var(--fg);
+    color: var(--bg);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    font-variation-settings: 'wdth' 100;
+  }
+  .track {
+    display: flex;
+    width: max-content;
+    animation: ticker 70s linear infinite;
+  }
+  .ticker:hover .track {
+    animation-play-state: paused;
+  }
+  .group {
+    display: flex;
+  }
+  .msg {
+    padding: 7px 0;
+    white-space: nowrap;
+  }
+  .sep {
+    padding: 0 1.4em;
+    color: #ff5b26;
+  }
+  @keyframes ticker {
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  /* ---------- the four silos, overlapping ---------- */
+  .stage {
+    margin-top: clamp(28px, 4cqw, 64px);
+  }
+  .silos {
+    position: relative;
+    margin-inline: auto;
+    transition: width 0.6s cubic-bezier(0.76, 0, 0.24, 1);
+  }
+  /* Every circle is placed in % of the stack, so switching layouts glides. */
+  .silos li {
+    position: absolute;
+    transition:
+      left 0.6s cubic-bezier(0.76, 0, 0.24, 1),
+      top 0.6s cubic-bezier(0.76, 0, 0.24, 1),
+      width 0.6s cubic-bezier(0.76, 0, 0.24, 1),
+      transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+
+  /* Row: four across, each tucked over the last (the slatted-circles mood). */
+  [data-arrange='row'] .silos {
+    width: min(100%, 1100px);
+    aspect-ratio: 100 / 34;
+  }
+  [data-arrange='row'] .silos li {
+    width: 34%;
+    top: 0;
+  }
+  [data-arrange='row'] .silos .s1 { left: 0; }
+  [data-arrange='row'] .silos .s2 { left: 22%; }
+  [data-arrange='row'] .silos .s3 { left: 44%; }
+  [data-arrange='row'] .silos .s4 { left: 66%; }
+
+  /* Cluster: a 2x2 seen from above, all four sharing the middle. */
+  [data-arrange='cluster'] .silos {
+    width: min(100%, 560px);
+    aspect-ratio: 1;
+  }
+  [data-arrange='cluster'] .silos li { width: 58%; }
+  [data-arrange='cluster'] .silos .s1 { left: 0; top: 0; }
+  [data-arrange='cluster'] .silos .s2 { left: 42%; top: 0; }
+  [data-arrange='cluster'] .silos .s3 { left: 0; top: 42%; }
+  [data-arrange='cluster'] .silos .s4 { left: 42%; top: 42%; }
+
+  /* Ring: four around a shared centre. */
+  [data-arrange='ring'] .silos {
+    width: min(100%, 560px);
+    aspect-ratio: 1;
+  }
+  [data-arrange='ring'] .silos li { width: 50%; }
+  [data-arrange='ring'] .silos .s1 { left: 25%; top: 0; }
+  [data-arrange='ring'] .silos .s2 { left: 50%; top: 25%; }
+  [data-arrange='ring'] .silos .s3 { left: 25%; top: 50%; }
+  [data-arrange='ring'] .silos .s4 { left: 0; top: 25%; }
+
+  .silo {
+    all: unset;
+    display: block;
+    width: 100%;
+    cursor: pointer;
+    border-radius: 50%;
+  }
+  .silo:focus-visible {
+    outline: 2px solid var(--fg);
+    outline-offset: 4px;
+  }
+  .disc {
+    position: relative;
+    display: block;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    overflow: hidden;
+    transition: box-shadow 0.35s;
+  }
+  .mark {
+    position: absolute;
+    inset: 21%;
+    width: 58%;
+    height: 58%;
+  }
+
+  /* ---------- names around the edge ---------- */
+  .arc {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    transition: rotate 0.6s cubic-bezier(0.76, 0, 0.24, 1);
+  }
+  .arc text {
+    font-family: var(--f-mono);
+    font-size: 7.4px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-variation-settings: 'wdth' 100;
+    fill: var(--bg);
+  }
+  /* By default the name runs along the top; layouts below override. */
+  .arc-bot {
+    display: none;
+  }
+
+  /* Row: circles only touch at the sides, so every name sits on top. */
+
+  /* Cluster: each name on its outer corner. */
+  [data-arrange='cluster'] .s1 .arc { rotate: -45deg; }
+  [data-arrange='cluster'] .s2 .arc { rotate: 45deg; }
+  [data-arrange='cluster'] .s3 .arc { rotate: 45deg; }
+  [data-arrange='cluster'] .s4 .arc { rotate: -45deg; }
+  [data-arrange='cluster'] .s3 .arc-top,
+  [data-arrange='cluster'] .s4 .arc-top { display: none; }
+  [data-arrange='cluster'] .s3 .arc-bot,
+  [data-arrange='cluster'] .s4 .arc-bot { display: inline; }
+
+  /* Ring: each name on the side facing away from the centre. */
+  [data-arrange='ring'] .s2 .arc { rotate: 90deg; }
+  [data-arrange='ring'] .s4 .arc { rotate: -90deg; }
+  [data-arrange='ring'] .s3 .arc-top { display: none; }
+  [data-arrange='ring'] .s3 .arc-bot { display: inline; }
+
+  /* Glow (screen): solid colour cut by dark slats, a black seam where one
+     circle crosses the next, and a soft halo. */
+  [data-look='glow'] .disc {
+    background:
+      repeating-linear-gradient(
+        to bottom,
+        transparent 0 9.5%,
+        rgb(0 0 0 / 0.82) 9.5% 11.5%
+      ),
+      var(--c);
+    box-shadow:
+      0 0 0 clamp(2px, 0.4cqw, 5px) var(--bg),
+      0 0 clamp(18px, 3cqw, 48px) color-mix(in srgb, var(--c) 55%, transparent);
+  }
+  [data-look='glow'] .mark {
+    display: none;
+  }
+
+  /* Ink (print): grainy colour with the brand mark printed on it. Overlaps
+     mix like inks laid on top of each other. */
+  [data-look='ink'] .disc {
+    background: url('/silo/grain.svg') center / 240px, var(--c);
+  }
+  [data-look='ink'] .silos li {
+    mix-blend-mode: screen;
+  }
+
+  /* Lift a circle to the front when it, or its name, is pointed at. */
+  .silos li:focus-within {
+    z-index: 5;
+    transform: scale(1.04);
+  }
   @media (hover: hover) {
-    .desc {
-      position: fixed;
-      right: 16px;
-      bottom: 16px;
-      z-index: 2;
-      width: min(38ch, calc(100vw - 32px));
-      padding: 0.9em 1.1em 1em;
-      font-size: clamp(16px, 1.55cqw, 26px);
-      font-weight: 600;
-      line-height: 1.28;
-      background: var(--c);
-      color: var(--bg);
-      box-shadow: 8px 8px 0 var(--fg);
-      visibility: hidden;
+    .silos li:hover,
+    .stage:has(.legend [data-pillar='recording']:hover) .silos [data-pillar='recording'],
+    .stage:has(.legend [data-pillar='decamp']:hover) .silos [data-pillar='decamp'],
+    .stage:has(.legend [data-pillar='creators']:hover) .silos [data-pillar='creators'],
+    .stage:has(.legend [data-pillar='label']:hover) .silos [data-pillar='label'] {
+      z-index: 5;
+      transform: scale(1.04);
     }
-    .item:hover .desc,
-    .item:focus-visible .desc {
-      visibility: visible;
+    [data-look='glow'] .silos li:hover .disc {
+      box-shadow:
+        0 0 0 clamp(2px, 0.4cqw, 5px) var(--bg),
+        0 0 clamp(28px, 5cqw, 80px) var(--c);
     }
-  }
-
-  /* touch screens can't hover: show the one-liner under each name */
-  @media (hover: none) {
-    .desc {
-      flex-basis: 100%;
-      padding: 0 0 0.5em calc(1.7rem + 0.3em);
-    }
-    .arr {
-      visibility: visible;
+    .stage:has(.silos [data-pillar='recording']:hover) .legend [data-pillar='recording'] button,
+    .stage:has(.silos [data-pillar='decamp']:hover) .legend [data-pillar='decamp'] button,
+    .stage:has(.silos [data-pillar='creators']:hover) .legend [data-pillar='creators'] button,
+    .stage:has(.silos [data-pillar='label']:hover) .legend [data-pillar='label'] button,
+    .legend button:hover {
+      color: var(--fg);
     }
   }
 
-  .soon {
-    color: var(--faint);
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px 28px;
+    margin: clamp(20px, 3cqw, 40px) 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: clamp(12px, 1.1cqw, 16px);
+    font-weight: 700;
+    line-height: 1.2;
+    font-variation-settings: 'wdth' 100;
+  }
+  .legend button {
+    all: unset;
+    cursor: pointer;
+    color: var(--c);
+    transition: color 0.2s;
+  }
+  .legend .no {
+    margin-right: 0.5em;
+    opacity: 0.6;
   }
 
-  .next {
-    margin-top: 0.35em;
-  }
-  .cursor {
-    display: inline-block;
-    width: 0.55em;
-    height: 0.8em;
-    background: var(--dim);
-    animation: blink 1s steps(2) infinite;
-  }
-  @keyframes blink {
-    50% {
-      opacity: 0;
-    }
-  }
-
-  .contact {
+  /* ---------- top right: Subscribe + Contact ---------- */
+  .top {
     position: fixed;
     top: 12px;
     right: 16px;
-    z-index: 2;
+    z-index: 4;
+    display: flex;
+    align-items: baseline;
+    gap: 0.9em;
+    padding: 0 0 4px 8px;
+    background: var(--bg);
     font-size: clamp(18px, 2.4vw, 26px);
     font-weight: 800;
     text-transform: uppercase;
+  }
+  /* Phones: four items up here, so shrink them to clear the SILO title. */
+  @media (max-width: 520px) {
+    .top {
+      top: 18px;
+      gap: 0.8em;
+      font-size: 14px;
+    }
+  }
+  .top-link {
+    all: unset;
+    cursor: pointer;
     color: var(--dim);
+  }
+  .top-link:hover,
+  .top-link[aria-expanded='true'] {
+    color: var(--fg);
+  }
+  .top-link:focus-visible {
+    outline: 2px solid var(--fg);
+    outline-offset: 2px;
+  }
+  .caret {
+    display: inline-block;
+    margin-left: 0.1em;
+    font-size: 0.7em;
+    transition: rotate 0.2s;
+  }
+  [aria-expanded='true'] .caret {
+    rotate: 180deg;
+  }
+
+  /* The dropdown hangs from the right edge of the whole top bar, so it stays
+     on screen on a phone. */
+  .drop {
+    position: absolute;
+    top: calc(100% + 12px);
+    right: 0;
+    width: min(360px, calc(100vw - 32px));
+    padding: 18px;
     background: var(--bg);
+    border: 2px solid var(--fg);
+    box-shadow: 8px 8px 0 var(--fg);
+    color: var(--fg);
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: none;
+    font-variation-settings: 'wdth' 100;
+  }
+  .drop[hidden] {
+    display: none;
+  }
+
+  /* Instagram / X icons */
+  .icon-link {
+    display: inline-flex;
+    align-self: center;
+  }
+  .icon-link :global(svg) {
+    display: block;
+    width: 0.95em;
+    height: 0.95em;
+  }
+
+  /* account rows in the Instagram / X dropdowns */
+  .accounts {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .accounts li {
+    border-top: 1px solid var(--faint);
+  }
+  .acct {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 16px;
+    padding: 10px 0;
+    color: var(--c);
+  }
+  .acct-name {
+    font-size: 16px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  .acct-handle {
+    color: var(--dim);
+    font-weight: 500;
+  }
+  a.acct:hover .acct-name,
+  a.acct:focus-visible .acct-name {
+    color: var(--fg);
+  }
+  .soon-acct .acct-name {
+    opacity: 0.55;
+  }
+  .sub-title {
+    margin: 0 0 12px;
+    font-size: 16px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  .sub-panel fieldset {
+    margin: 0 0 16px;
+    padding: 0;
+    border: 0;
+  }
+  .opt {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    cursor: pointer;
+    color: var(--c);
+  }
+  .opt input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+  }
+  .box {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--c);
+    display: grid;
+    place-items: center;
+  }
+  .opt input:checked + .box {
+    background: var(--c);
+  }
+  .opt input:checked + .box::after {
+    content: '✓';
+    color: var(--bg);
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .opt input:focus-visible + .box {
+    outline: 2px solid var(--fg);
+    outline-offset: 2px;
+  }
+  .opt[data-pillar='all'] {
+    padding-bottom: 10px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--faint);
+  }
+
+  .sub-row {
+    display: flex;
+    gap: 8px;
+  }
+  .sub-row input {
+    flex: 1;
+    min-width: 0;
+    padding: 9px 10px;
+    border: 2px solid var(--fg);
+    background: var(--bg);
+    color: var(--fg);
+    font: inherit;
+    font-weight: 500;
+  }
+  .sub-row input::placeholder {
+    color: var(--dim);
+  }
+  .sub-row input:focus-visible {
+    outline: none;
+    border-color: #ff5b26;
+  }
+  .sub-row button {
+    all: unset;
+    cursor: pointer;
+    padding: 9px 14px;
+    background: var(--fg);
+    color: var(--bg);
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  .sub-row button:hover {
+    background: #ff5b26;
+  }
+  .sub-row button:focus-visible {
+    outline: 2px solid #ff5b26;
+    outline-offset: 2px;
+  }
+  .sub-note {
+    margin: 10px 0 0;
+    min-height: 1.3em;
+    color: var(--dim);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+  }
+  .sub-note:empty {
+    display: none;
+  }
+
+  /* ---------- an open silo ---------- */
+  .panel {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100dvh;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: var(--c);
+    color: var(--bg);
+    font-family: var(--f-mono);
+    font-variation-settings: 'wdth' 75;
+  }
+  .panel::backdrop {
+    background: transparent;
+  }
+  .inner {
+    min-height: 100%;
+    padding: 12px 16px 64px;
+  }
+  .panel .tag {
+    color: inherit;
+    opacity: 0.6;
+  }
+
+  .close {
+    all: unset;
+    position: sticky;
+    top: 0;
+    float: right;
+    margin-left: 16px;
+    cursor: pointer;
+    font-size: clamp(18px, 2.4vw, 26px);
+    font-weight: 800;
+    text-transform: uppercase;
+    background: var(--c);
     padding: 0 0 4px 8px;
   }
-  .contact:hover {
+  .close:hover {
+    color: var(--fg);
+  }
+  .close:focus-visible {
+    outline: 2px solid var(--bg);
+    outline-offset: 2px;
+  }
+
+  .panel-title {
+    font-size: clamp(40px, calc((100vw - 60px) / 11), 160px);
+    font-weight: 800;
+    line-height: 0.94;
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+  }
+  /* description on the left, sign-up + follow on the right */
+  .panel-intro {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+    gap: clamp(20px, 4vw, 64px);
+    align-items: start;
+    margin-top: clamp(16px, 2.5vw, 36px);
+  }
+  .optin {
+    padding: 16px;
+    border: 2px solid var(--bg);
+    font-variation-settings: 'wdth' 100;
+  }
+  .optin-title {
+    margin: 0 0 10px;
+    font-size: 14px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  .optin-row {
+    display: flex;
+    gap: 8px;
+  }
+  .optin-row input {
+    flex: 1;
+    min-width: 0;
+    padding: 9px 10px;
+    border: 2px solid var(--bg);
+    background: transparent;
+    color: var(--bg);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .optin-row input::placeholder {
+    color: rgb(0 0 0 / 0.5);
+  }
+  .optin-row input:focus-visible {
+    outline: 2px solid var(--bg);
+    outline-offset: 2px;
+  }
+  .optin-row button {
+    all: unset;
+    cursor: pointer;
+    padding: 9px 14px;
+    background: var(--bg);
+    color: var(--c);
+    font-size: 14px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  .optin-row button:hover {
+    color: var(--fg);
+  }
+  .optin-row button:focus-visible {
+    outline: 2px solid var(--bg);
+    outline-offset: 2px;
+  }
+  .optin-note {
+    margin: 8px 0 0;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+  }
+  .optin-note:empty {
+    display: none;
+  }
+  .follow {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgb(0 0 0 / 0.25);
+  }
+  .follow-label {
+    margin-right: auto;
+    font-size: 14px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  .follow-icon {
+    display: inline-flex;
+  }
+  .follow-icon :global(svg) {
+    width: 24px;
+    height: 24px;
+  }
+  a.follow-icon:hover {
+    color: var(--fg);
+  }
+  .soon-icon {
+    opacity: 0.4;
+    cursor: default;
+  }
+  @media (max-width: 720px) {
+    .panel-intro {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .panel-desc {
+    max-width: 34ch;
+    font-size: clamp(18px, 2.2vw, 32px);
+    font-weight: 600;
+    line-height: 1.25;
+    font-variation-settings: 'wdth' 100;
+  }
+
+  .items {
+    margin-top: clamp(28px, 5vw, 72px);
+    border-top: 2px solid var(--bg);
+  }
+  .items li {
+    border-bottom: 2px solid var(--bg);
+  }
+  .item {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    align-items: center;
+    gap: 8px 32px;
+    padding: 14px 0 16px;
+  }
+  .item-head {
+    flex-wrap: nowrap;
+    font-size: clamp(30px, 5vw, 80px);
+    font-weight: 800;
+    line-height: 0.95;
+    text-transform: uppercase;
+  }
+  .item-name {
+    min-width: 0;
+  }
+  .arr {
+    font-size: 0.6em;
+    margin-left: 0.15em;
+  }
+  .item-desc {
+    max-width: 52ch;
+    font-size: clamp(14px, 1.3vw, 19px);
+    font-weight: 500;
+    line-height: 1.4;
+    font-variation-settings: 'wdth' 100;
+  }
+  a.item:hover .item-name,
+  a.item:focus-visible .item-name {
+    color: var(--fg);
+  }
+  .soon {
+    opacity: 0.45;
+  }
+
+  .more {
+    display: inline-block;
+    margin-top: 28px;
+    font-size: clamp(18px, 2.4vw, 30px);
+    font-weight: 800;
+    text-transform: uppercase;
+    border-bottom: 2px solid currentColor;
+  }
+  .more:hover {
     color: var(--fg);
   }
 
+  @media (max-width: 720px) {
+    .item {
+      grid-template-columns: 1fr;
+    }
+    .item-desc {
+      padding-left: calc(1.7rem + 0.3em);
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .cursor {
+    .track {
       animation: none;
+    }
+    .disc,
+    .silos,
+    .silos li {
+      transition: none;
     }
   }
 </style>

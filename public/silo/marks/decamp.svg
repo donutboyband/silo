@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400" role="img" aria-label="Abstract grainy mark for DeCamp">
+<filter id="fx02" x="-25%" y="-25%" width="150%" height="150%" color-interpolation-filters="sRGB">
+<feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="2" seed="23" result="warp"></feTurbulence>
+<feDisplacementMap in="SourceGraphic" in2="warp" scale="45" xChannelSelector="R" yChannelSelector="G" result="d"></feDisplacementMap>
+<feGaussianBlur in="d" stdDeviation="5" result="b"></feGaussianBlur>
+<feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="1" seed="7" result="n"></feTurbulence>
+<feComposite in="b" in2="n" operator="arithmetic" k1="0" k2="1" k3="0.55" k4="-0.3" result="mix"></feComposite>
+<feComponentTransfer in="mix" result="th"><feFuncA type="discrete" tableValues="0 0 1 1"></feFuncA></feComponentTransfer>
+<feFlood flood-color="#1A1714" result="ink"></feFlood>
+<feComposite in="ink" in2="th" operator="in"></feComposite>
+</filter>
+<g filter="url(#fx02)"><circle cx="70" cy="300" r="36" fill="#000"></circle><circle cx="120" cy="250" r="26" fill="#000"></circle><circle cx="165" cy="215" r="32" fill="#000"></circle><circle cx="215" cy="190" r="20" fill="#000"></circle><circle cx="258" cy="160" r="27" fill="#000"></circle><circle cx="298" cy="128" r="15" fill="#000"></circle><circle cx="330" cy="102" r="19" fill="#000"></circle><circle cx="356" cy="80" r="10" fill="#000"></circle></g>
+</svg>
