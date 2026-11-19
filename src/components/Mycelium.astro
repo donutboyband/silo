@@ -13,7 +13,25 @@ import SiloDetail from './SiloDetail.astro';
 // DeCamp's projects are places, so its roots grow onto a US map.
 const us = usPaths(1.2);
 
-const drawings: { id: string; net: Network }[] = [
+// The way in: the four discs overlapping in a ring around the middle (as in
+// the Silo version), then breaking out to their places. For node i: how far
+// to shift it from its spot, and how much bigger it starts.
+const RING = [
+  [0, -1],
+  [1, 0],
+  [0, 1],
+  [-1, 0],
+];
+const cluster = (net: Network, i: number, r: number) => {
+  const n = net.nodes[i];
+  return {
+    dx: Math.round(net.w / 2 + RING[i][0] * r - n.x),
+    dy: Math.round(net.h / 2 + RING[i][1] * r - n.y),
+    k: Math.round((r / net.nodeR) * 100) / 100,
+  };
+};
+
+const drawings: { id: string; net: Network; ring: number }[] = [
   {
     id: 'wide',
     net: grow(pillars, {
@@ -31,6 +49,7 @@ const drawings: { id: string; net: Network }[] = [
       // top-right quarter; the DeCamp node sits out west, so its roots cross the country
       maps: { decamp: { x: 500, y: 12, s: 0.5 } },
     }),
+    ring: 120,
   },
   {
     id: 'tall',
@@ -50,13 +69,14 @@ const drawings: { id: string; net: Network }[] = [
       labels: 'stack',
       maps: { decamp: { x: 20, y: 300, s: 0.574 } },
     }),
+    ring: 130,
   },
 ];
 ---
 
-<div class="myc" data-myc>
+<div class="myc intro mixing" data-myc>
   {
-    drawings.map(({ id, net }) => (
+    drawings.map(({ id, net, ring }) => (
       <svg
         class:list={['net', id]}
         viewBox={`0 0 ${net.w} ${net.h}`}
@@ -69,7 +89,7 @@ const drawings: { id: string; net: Network }[] = [
           ))}
         </g>
 
-        {net.nodes.map((n) => (
+        {net.nodes.map((n, ni) => (
           <g class="colony" data-pillar={n.key} data-node={n.key}>
             {n.map && (
               <g class="usmap" transform={`translate(${n.map.x} ${n.map.y}) scale(${n.map.s})`} aria-hidden="true">
@@ -118,7 +138,14 @@ const drawings: { id: string; net: Network }[] = [
             >
               <circle class="node-hit" r={net.nodeR + 18} />
               <circle class="node-halo" r={net.nodeR + 10} />
-              {/* the silo's disc: its colour, print grain, and its brand mark */}
+              {/* the silo's disc: its colour, print grain, and its brand mark.
+                  It starts in the opening cluster (data-dx/dy/k) and breaks out. */}
+              <g
+                class="node-body"
+                data-dx={cluster(net, ni, ring).dx}
+                data-dy={cluster(net, ni, ring).dy}
+                data-k={cluster(net, ni, ring).k}
+              >
               <circle class="node-core" r={net.nodeR} />
               <image
                 class="node-grain"
@@ -137,6 +164,7 @@ const drawings: { id: string; net: Network }[] = [
                 width={net.nodeR * 1.28}
                 height={net.nodeR * 1.28}
               />
+              </g>
               <text class="node-label" y={n.labelDy} text-anchor="middle">
                 {n.name}
               </text>
@@ -147,6 +175,11 @@ const drawings: { id: string; net: Network }[] = [
     ))
   }
 
+
+  {/* The front door: covers the drawing until the cluster is entered. */}
+  <button class="enter" type="button" aria-label="Enter Silo">
+    <span class="enter-label">Enter ↘</span>
+  </button>
 
   {/* Each silo's page, opened under the drawing when its node is clicked. */}
   {
@@ -167,14 +200,56 @@ const drawings: { id: string; net: Network }[] = [
   const phone = matchMedia('(max-width: 640px)');
   let current = ''; // the silo whose page is open below, if any
 
-  // The faint web draws itself in once, when the page loads.
-  if (!reduce.matches) {
+  // The faint web draws itself in, once you're in.
+  const drawWeb = (lag = 0) => {
+    if (reduce.matches) return;
     root.querySelectorAll<SVGPathElement>('.web path').forEach((p, i) => {
       p.animate(
         { strokeDashoffset: [1.5, 0] },
-        { duration: 1800 + (i % 7) * 260, delay: (i % 11) * 90, easing: 'cubic-bezier(0.3, 0.6, 0.3, 1)' },
+        { duration: 1800 + (i % 7) * 260, delay: lag + (i % 11) * 90, easing: 'cubic-bezier(0.3, 0.6, 0.3, 1)', fill: 'backwards' },
       );
     });
+  };
+
+  // ---------- the way in ----------
+  // The four discs wait overlapped in a ring. Entering breaks them out to their
+  // places, then names, rings and the web come in. Once per visit.
+  const enterBtn = root.querySelector<HTMLButtonElement>('.enter')!;
+  let seen = false;
+  try {
+    seen = sessionStorage.getItem('silo-entered') === '1';
+  } catch {}
+  const bodies = [...root.querySelectorAll<SVGGElement>('.node-body')];
+  const clustered = (b: SVGGElement) => `translate(${b.dataset.dx}px, ${b.dataset.dy}px) scale(${b.dataset.k})`;
+  const breakOut = bodies.map((b, i) =>
+    b.animate([{ transform: clustered(b) }, { transform: 'none' }], {
+      duration: 1150,
+      delay: (i % 4) * 70,
+      easing: 'cubic-bezier(0.76, 0, 0.24, 1)',
+      fill: 'backwards',
+    }),
+  );
+
+  function enter() {
+    enterBtn.remove();
+    root.classList.remove('intro');
+    try {
+      sessionStorage.setItem('silo-entered', '1');
+    } catch {}
+    breakOut.forEach((a) => a.play());
+    Promise.all(breakOut.map((a) => a.finished)).then(() => root.classList.remove('mixing'));
+    drawWeb(700);
+  }
+
+  if (seen || reduce.matches) {
+    breakOut.forEach((a) => a.cancel());
+    enterBtn.remove();
+    root.classList.remove('intro', 'mixing');
+    drawWeb();
+  } else {
+    breakOut.forEach((a) => a.pause()); // hold the cluster until entered
+    root.classList.add('primed');
+    enterBtn.addEventListener('click', enter);
   }
 
   // Grow or fold a node's colony. Both drawings (wide and tall) stay in step.
@@ -413,6 +488,60 @@ const drawings: { id: string; net: Network }[] = [
     opacity: 1;
   }
 
+  /* ---------- the way in ---------- */
+  /* Until the script has stacked the discs into the cluster, show nothing. */
+  .intro:not(.primed) .node-body {
+    opacity: 0;
+  }
+  /* While clustered, and until they land: overlapping discs mix like inks. */
+  .mixing .node-body {
+    mix-blend-mode: screen;
+  }
+  .intro .web,
+  .intro .node-label,
+  .intro .node-halo {
+    opacity: 0;
+  }
+  .node-label,
+  .node-halo,
+  .web {
+    transition: opacity 0.6s ease 0.9s;
+  }
+  .enter {
+    all: unset;
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .enter-label {
+    margin-bottom: 1.5%;
+    padding: 6px 12px;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--fg);
+    font-variation-settings: 'wdth' 100;
+    animation: nudge 1.6s ease-in-out infinite;
+  }
+  .enter:hover .enter-label,
+  .enter:focus-visible .enter-label {
+    background: var(--fg);
+    color: var(--bg);
+  }
+  .enter:focus-visible {
+    outline: none;
+  }
+  @keyframes nudge {
+    50% {
+      transform: translateY(4px);
+    }
+  }
+
   /* the four nodes */
   .node {
     cursor: pointer;
@@ -546,7 +675,8 @@ const drawings: { id: string; net: Network }[] = [
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .node-halo {
+    .node-halo,
+    .enter-label {
       animation: none;
     }
   }
