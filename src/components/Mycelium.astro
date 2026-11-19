@@ -326,6 +326,22 @@ const drawings: { id: string; net: Network; ring: number }[] = [
     });
   }
 
+  // Shrink a page's type and spacing in small steps until it fits beside the
+  // drawing with no scrolling (never below 60% size). Phones scroll instead.
+  // (--fit is set through the CSSOM, which the CSP allows.)
+  function fit(panel: HTMLElement) {
+    panel.style.removeProperty('--fit');
+    if (phone.matches) return;
+    let k = 1;
+    while (panel.scrollHeight > panel.clientHeight + 1 && k > 0.6) {
+      k = Math.round((k - 0.04) * 100) / 100;
+      panel.style.setProperty('--fit', String(k));
+    }
+  }
+  addEventListener('resize', () => {
+    if (current) fit(root.querySelector<HTMLElement>(`#focus-${current}`)!);
+  });
+
   function focusOn(key: string, project?: string) {
     const svg = shownNet();
     const panel = root.querySelector<HTMLElement>(`#focus-${key}`)!;
@@ -334,6 +350,7 @@ const drawings: { id: string; net: Network; ring: number }[] = [
     current = key;
     root.classList.add('focused');
     root.querySelectorAll<HTMLElement>('.focus').forEach((f) => (f.hidden = f !== panel));
+    fit(panel);
     if (!root.querySelector(`.colony[data-node="${key}"].open`)) setColony(key, true);
     fadeOthers(svg, key);
 
@@ -677,10 +694,10 @@ const drawings: { id: string; net: Network; ring: number }[] = [
 
   /* Fit the whole network on screen under the title and banner, however short
      the window. The title grows with the window's width (about 1.14 x its
-     font size, which is (100vw - 60px) / 11), plus ~88px of banner and
+     font size, which is (100vw - 60px) / 11), plus ~108px of banner and
      spacing. 1.613 is the drawing's width-to-height. */
   .wide {
-    max-width: min(1200px, calc((100svh - 88px - (100vw - 60px) * 0.1036) * 1.613));
+    max-width: min(1200px, calc((100svh - 108px - (100vw - 60px) * 0.1036) * 1.613));
     transition: max-width 0.6s cubic-bezier(0.76, 0, 0.24, 1);
   }
 
