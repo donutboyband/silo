@@ -42,6 +42,8 @@ export interface Node {
   x: number;
   y: number;
   labelBelow: boolean;
+  /** where the node's name sits, relative to its centre */
+  labelDy: number;
   /** where this node's US map sits, if its projects are places (DeCamp) */
   map?: { x: number; y: number; s: number };
   lines: Line[];
@@ -51,6 +53,8 @@ export interface Node {
 export interface Network {
   w: number;
   h: number;
+  /** radius of the node discs */
+  nodeR: number;
   web: Line[];
   nodes: Node[];
 }
@@ -90,6 +94,8 @@ export function grow(
     reach: [number, number];
     seed: number;
     charW?: number;
+    /** radius of the node discs (they carry the silo marks) */
+    nodeR?: number;
     labels?: 'side' | 'stack';
     /** per pillar key: a US map box (top-left corner and scale) its places land on */
     maps?: Record<string, { x: number; y: number; s: number }>;
@@ -103,6 +109,9 @@ export function grow(
   const inside = (p: Pt) => p.x >= pad && p.x <= w - pad && p.y >= pad && p.y <= h - pad;
   const clamp = (p: Pt): Pt => ({ x: Math.min(w - pad, Math.max(pad, p.x)), y: Math.min(h - pad, Math.max(pad, p.y)) });
   const charW = layout.charW ?? 9.4;
+  const nodeR = layout.nodeR ?? 13;
+  // node names sit just outside the disc: below it for top nodes, above for bottom
+  const labelDyFor = (o: Pt) => (o.y < center.y ? nodeR + 40 : -(nodeR + 22));
   const stack = layout.labels === 'stack';
   const labelW = (s: string) => s.length * charW + 14;
 
@@ -236,7 +245,7 @@ export function grow(
       };
       // the node's own name is bigger type (about 1.3x), centred on the node
       const nw = labelW(p.name) * 1.3;
-      const ny = o.y + (o.y < center.y ? 52 : -36);
+      const ny = o.y + labelDyFor(o);
       const nodeBox = { l: o.x - nw / 2, r: o.x + nw / 2, t: ny - 26, b: ny + 8 };
       const hitsNode = (a: Tip) => {
         const q = box(a);
@@ -254,11 +263,12 @@ export function grow(
       x: o.x,
       y: o.y,
       labelBelow: o.y < center.y,
+      labelDy: labelDyFor(o),
       map: box,
       lines,
       tips,
     };
   });
 
-  return { w, h, web, nodes };
+  return { w, h, nodeR, web, nodes };
 }

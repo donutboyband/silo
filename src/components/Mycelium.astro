@@ -27,6 +27,7 @@ const drawings: { id: string; net: Network }[] = [
       ],
       reach: [150, 205],
       seed: 7,
+      nodeR: 42,
       // top-right quarter; the DeCamp node sits out west, so its roots cross the country
       maps: { decamp: { x: 500, y: 12, s: 0.5 } },
     }),
@@ -44,6 +45,7 @@ const drawings: { id: string; net: Network }[] = [
       ],
       reach: [115, 150],
       seed: 11,
+      nodeR: 52,
       charW: 13.2,
       labels: 'stack',
       maps: { decamp: { x: 20, y: 300, s: 0.574 } },
@@ -114,10 +116,28 @@ const drawings: { id: string; net: Network }[] = [
               data-name={n.name}
               data-desc={n.desc}
             >
-              <circle class="node-hit" r="34" />
-              <circle class="node-halo" r="24" />
-              <circle class="node-core" r="13" />
-              <text class="node-label" y={n.labelBelow ? 52 : -36} text-anchor="middle">
+              <circle class="node-hit" r={net.nodeR + 18} />
+              <circle class="node-halo" r={net.nodeR + 10} />
+              {/* the silo's disc: its colour, print grain, and its brand mark */}
+              <circle class="node-core" r={net.nodeR} />
+              <image
+                class="node-grain"
+                href="/silo/grain.svg"
+                x={-net.nodeR}
+                y={-net.nodeR}
+                width={net.nodeR * 2}
+                height={net.nodeR * 2}
+                preserveAspectRatio="xMidYMid slice"
+              />
+              <image
+                class="node-mark"
+                href={`/silo/marks/${n.key}.svg`}
+                x={-net.nodeR * 0.64}
+                y={-net.nodeR * 0.64}
+                width={net.nodeR * 1.28}
+                height={net.nodeR * 1.28}
+              />
+              <text class="node-label" y={n.labelDy} text-anchor="middle">
                 {n.name}
               </text>
             </g>
@@ -151,7 +171,7 @@ const drawings: { id: string; net: Network }[] = [
   if (!reduce.matches) {
     root.querySelectorAll<SVGPathElement>('.web path').forEach((p, i) => {
       p.animate(
-        { strokeDashoffset: [1, 0] },
+        { strokeDashoffset: [1.5, 0] },
         { duration: 1800 + (i % 7) * 260, delay: (i % 11) * 90, easing: 'cubic-bezier(0.3, 0.6, 0.3, 1)' },
       );
     });
@@ -167,7 +187,7 @@ const drawings: { id: string; net: Network }[] = [
       if (!visible) return;
       // a map (DeCamp) outlines itself first, then the roots grow across it
       col.querySelectorAll<SVGPathElement>('.us-nation').forEach((p) =>
-        p.animate({ strokeDashoffset: open ? [1, 0] : [0, 1] }, open ? { duration: 900, easing: 'ease-out' } : { duration: 350 }),
+        p.animate({ strokeDashoffset: open ? [1.5, 0] : [0, 1.5] }, open ? { duration: 900, easing: 'ease-out' } : { duration: 350 }),
       );
       col.querySelectorAll<SVGGElement>('.usmap').forEach((m) =>
         m.animate({ opacity: open ? [0, 1] : [1, 0] }, open ? { duration: 500 } : { duration: 350 }),
@@ -176,7 +196,7 @@ const drawings: { id: string; net: Network }[] = [
         const delay = Number(p.dataset.delay);
         const dur = Number(p.dataset.dur);
         p.animate(
-          { strokeDashoffset: open ? [1, 0] : [0, 1] },
+          { strokeDashoffset: open ? [1.5, 0] : [0, 1.5] },
           open
             ? { duration: dur, delay, easing: 'cubic-bezier(0.25, 0.6, 0.3, 1)', fill: 'backwards' }
             : { duration: 380, easing: 'ease-in' },
@@ -301,7 +321,8 @@ const drawings: { id: string; net: Network }[] = [
     fill: none;
     stroke-linecap: round;
     stroke-linejoin: round;
-    stroke-dasharray: 1 1;
+    /* a hidden line sits wholly in the gap, so its round ends can't show */
+    stroke-dasharray: 1 2;
   }
 
   /* the underground: always there, faint */
@@ -313,7 +334,7 @@ const drawings: { id: string; net: Network }[] = [
   /* a colony's own threads, hidden until it opens */
   .hyphae path {
     stroke: var(--c);
-    stroke-dashoffset: 1;
+    stroke-dashoffset: 1.5;
   }
   .open .hyphae path {
     stroke-dashoffset: 0;
@@ -402,6 +423,21 @@ const drawings: { id: string; net: Network }[] = [
   }
   .node-core {
     fill: var(--c);
+  }
+  .node-grain {
+    clip-path: circle(50%);
+    opacity: 0.9;
+    pointer-events: none;
+  }
+  .node-mark {
+    pointer-events: none;
+    transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1);
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+  .node:hover .node-mark,
+  .node:focus-visible .node-mark {
+    transform: scale(1.08);
   }
   .node-halo {
     fill: none;
