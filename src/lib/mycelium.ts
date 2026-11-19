@@ -16,6 +16,8 @@ export interface Line {
   w: number;
   /** stroke opacity (web only) */
   o?: number;
+  /** which silo's colour it takes (web only): a pillar key */
+  c?: string;
   /** when it starts drawing, ms after its node opens */
   delay?: number;
   /** how long it takes to draw, ms */
@@ -119,11 +121,12 @@ export function grow(
   const web: Line[] = [];
 
   {
-    // fine grey rootlets spreading from each node, and a few between them
-    at.forEach((o) => {
+    // fine rootlets spreading from each node in its silo's colour, and threads
+    // between every pair of nodes, one in each of the pair's colours
+    at.forEach((o, i) => {
       for (let k = 0; k < 7; k++) {
         const ang = rand() * Math.PI * 2;
-        rootlet(o, ang, 70 + rand() * 80, 0.8, 2);
+        rootlet(o, ang, 70 + rand() * 80, 0.8, 2, pillars[i].key);
       }
     });
     for (let i = 0; i < at.length; i++)
@@ -131,22 +134,29 @@ export function grow(
         const a = at[i];
         const b = at[j];
         const m = lerp(a, b, 0.5);
-        const off = (rand() - 0.5) * 120;
-        web.push({ d: curve(a, { x: m.x + off, y: m.y - off }, { x: m.x - off * 0.5, y: m.y + off * 0.5 }, b), w: 0.5, o: 0.22 });
+        for (const k of [i, j]) {
+          const off = (rand() - 0.5) * 140;
+          web.push({
+            d: curve(a, { x: m.x + off, y: m.y - off }, { x: m.x - off * 0.5, y: m.y + off * 0.5 }, b),
+            w: 0.7,
+            o: 0.45,
+            c: pillars[k].key,
+          });
+        }
       }
   }
 
-  function rootlet(o: Pt, ang: number, len: number, wd: number, depth: number) {
+  function rootlet(o: Pt, ang: number, len: number, wd: number, depth: number, c: string) {
     const end = polar(o, ang, len);
     const bend = ang + (rand() - 0.5) * 0.9;
     const c1 = polar(o, bend, len * 0.4);
     const c2 = polar(o, ang + (rand() - 0.5) * 0.4, len * 0.75);
     if (!inside(end)) return;
-    web.push({ d: curve(o, c1, c2, end), w: wd, o: 0.18 + depth * 0.05 });
+    web.push({ d: curve(o, c1, c2, end), w: wd, o: 0.32 + depth * 0.08, c });
     if (depth > 0)
       for (let k = 0; k < 2; k++) {
         const t = 0.35 + rand() * 0.5;
-        rootlet(onCurve(o, c1, c2, end, t), ang + (rand() < 0.5 ? -1 : 1) * (0.4 + rand() * 0.5), len * 0.5, wd * 0.7, depth - 1);
+        rootlet(onCurve(o, c1, c2, end, t), ang + (rand() < 0.5 ? -1 : 1) * (0.4 + rand() * 0.5), len * 0.5, wd * 0.7, depth - 1, c);
       }
   }
 

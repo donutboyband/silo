@@ -86,7 +86,7 @@ const drawings: { id: string; net: Network; ring: number }[] = [
       >
         <g class="web" aria-hidden="true">
           {net.web.map((p) => (
-            <path d={p.d} stroke-width={p.w} stroke-opacity={p.o} pathLength="1" />
+            <path d={p.d} stroke-width={p.w} stroke-opacity={p.o} data-pillar={p.c} pathLength="1" />
           ))}
         </g>
 
@@ -477,8 +477,9 @@ const drawings: { id: string; net: Network; ring: number }[] = [
   }
 
   /* the underground: always there, faint */
+  /* the underground, in the four silos' colours */
   .web path {
-    stroke: #8c8c8c;
+    stroke: var(--c, #8c8c8c);
     stroke-dashoffset: 0;
   }
 
