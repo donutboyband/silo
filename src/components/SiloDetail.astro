@@ -1,0 +1,321 @@
+---
+// One silo's page: its name, description, sign-up box and follow icons, then
+// its projects (a list, or a map when they are places). Used inside the
+// full-screen panels (Silo version) and under the drawing (Mycelium version).
+import type { Pillar } from '../data/catalog';
+import { socialMenus, accountFor } from '../data/social-menus';
+import PlaceMap from './PlaceMap.astro';
+import SocialIcon from './SocialIcon.astro';
+
+interface Props {
+  p: Pillar;
+  i: number;
+  /** keeps ids unique when a page shows the same silo twice */
+  idPrefix: string;
+  /** show the #01-style numbers */
+  numbers?: boolean;
+}
+const { p, i, idPrefix, numbers = true } = Astro.props;
+const isExternal = (url?: string) => !!url?.startsWith('http');
+---
+
+<h2 class="panel-title row" id={`${idPrefix}-${p.key}-title`}>
+  {numbers && (<span class="tag"><i>#</i>{String(i + 1).padStart(2, '0')}</span>)}
+  <span class="name">{p.name}</span>
+</h2>
+
+<div class="panel-intro">
+  <p class="panel-desc">{p.desc}</p>
+
+  {/* Sign up and follow, just for this silo. Placeholder: sends nothing yet. */}
+  <div class="optin">
+    <form class="optin-form" novalidate>
+      <p class="optin-title">Get {p.name} updates</p>
+      <input type="hidden" name="list" value={p.key} />
+      <label class="sr" for={`${idPrefix}-optin-${p.key}`}>Email address</label>
+      <div class="optin-row">
+        <input
+          id={`${idPrefix}-optin-${p.key}`}
+          type="email"
+          name="email"
+          placeholder="you@email.com"
+          autocomplete="email"
+          required
+        />
+        <button type="submit">Sign up</button>
+      </div>
+      <p class="optin-note" role="status"></p>
+    </form>
+
+    <div class="follow">
+      <span class="follow-label">Follow</span>
+      {socialMenus.map((m) => {
+        const acct = accountFor(m, p.socialName);
+        const name = `${p.socialName} on ${m.title}`;
+        return acct?.url ? (
+          <a class="follow-icon" href={acct.url} target="_blank" rel="noopener" aria-label={name}>
+            <SocialIcon kind={m.id} />
+          </a>
+        ) : (
+          <span class="follow-icon soon-icon" role="img" aria-label={`${name}, coming soon`} title="Coming soon">
+            <SocialIcon kind={m.id} />
+          </span>
+        );
+      })}
+    </div>
+  </div>
+</div>
+
+{/* Silos whose items are places (DeCamp) get a map; the rest a list. */}
+{p.items.some((it) => it.at) ? (
+  <PlaceMap id={`${idPrefix}-${p.key}`} items={p.items} />
+) : (
+<ul class:list={['items', { plain: !numbers }]}>
+  {p.items.map((it) => {
+    const Tag = it.soon || !it.url ? 'span' : 'a';
+    return (
+      <li>
+        <Tag
+          class:list={['item', { soon: it.soon }]}
+          href={Tag === 'a' ? it.url : undefined}
+          target={Tag === 'a' && isExternal(it.url) ? '_blank' : undefined}
+          rel={Tag === 'a' && isExternal(it.url) ? 'noopener' : undefined}
+        >
+          <span class="row item-head">
+            {numbers && (<span class="tag"><i>#</i>{it.no}</span>)}
+            <span class="item-name">
+              {it.name}
+              {Tag === 'a' && <span class="arr">↗</span>}
+            </span>
+          </span>
+          <span class="item-desc">{it.soon ? `Soon. ${it.desc}` : it.desc}</span>
+        </Tag>
+      </li>
+    );
+  })}
+</ul>
+)}
+
+{p.url && (
+  <a class="more" href={p.url}>
+    {p.urlLabel ?? 'More'} ↗
+  </a>
+)}
+
+<script>
+  // ---------- Per-silo sign-up forms (inside each open silo) ----------
+  document.querySelectorAll<HTMLFormElement>('.optin-form').forEach((form) => {
+    const out = form.querySelector<HTMLElement>('.optin-note')!;
+    const email = form.querySelector<HTMLInputElement>('input[type="email"]')!;
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!email.checkValidity()) {
+        out.textContent = 'That email address doesn’t look right.';
+        email.focus();
+      } else {
+        // TODO: send to the newsletter service (list: form.list.value) once one is chosen.
+        out.textContent = 'Thanks! Sign-ups aren’t live yet, so nothing was sent.';
+      }
+    });
+  });
+
+</script>
+
+<style>
+  h2,
+  p,
+  ul {
+    margin: 0;
+    padding: 0;
+    font: inherit;
+    list-style: none;
+  }
+  .tag {
+    color: inherit;
+    opacity: 0.6;
+  }
+
+  .panel-title {
+    font-size: clamp(40px, calc((100vw - 60px) / 11), 160px);
+    font-weight: 800;
+    line-height: 0.94;
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+  }
+  /* description on the left, sign-up + follow on the right */
+  .panel-intro {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+    gap: clamp(20px, 4vw, 64px);
+    align-items: start;
+    margin-top: clamp(16px, 2.5vw, 36px);
+  }
+  .optin {
+    padding: 16px;
+    border: 2px solid var(--bg);
+    font-variation-settings: 'wdth' 100;
+  }
+  .optin-title {
+    margin: 0 0 10px;
+    font-size: 14px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  .optin-row {
+    display: flex;
+    gap: 8px;
+  }
+  .optin-row input {
+    flex: 1;
+    min-width: 0;
+    padding: 9px 10px;
+    border: 2px solid var(--bg);
+    background: transparent;
+    color: var(--bg);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .optin-row input::placeholder {
+    color: rgb(0 0 0 / 0.5);
+  }
+  .optin-row input:focus-visible {
+    outline: 2px solid var(--bg);
+    outline-offset: 2px;
+  }
+  .optin-row button {
+    all: unset;
+    cursor: pointer;
+    padding: 9px 14px;
+    background: var(--bg);
+    color: var(--c);
+    font-size: 14px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  .optin-row button:hover {
+    color: var(--fg);
+  }
+  .optin-row button:focus-visible {
+    outline: 2px solid var(--bg);
+    outline-offset: 2px;
+  }
+  .optin-note {
+    margin: 8px 0 0;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+  }
+  .optin-note:empty {
+    display: none;
+  }
+  .follow {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgb(0 0 0 / 0.25);
+  }
+  .follow-label {
+    margin-right: auto;
+    font-size: 14px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  .follow-icon {
+    display: inline-flex;
+  }
+  .follow-icon :global(svg) {
+    width: 24px;
+    height: 24px;
+  }
+  a.follow-icon:hover {
+    color: var(--fg);
+  }
+  .soon-icon {
+    opacity: 0.4;
+    cursor: default;
+  }
+  @media (max-width: 720px) {
+    .panel-intro {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .panel-desc {
+    max-width: 34ch;
+    font-size: clamp(18px, 2.2vw, 32px);
+    font-weight: 600;
+    line-height: 1.25;
+    font-variation-settings: 'wdth' 100;
+  }
+
+  .items {
+    margin-top: clamp(28px, 5vw, 72px);
+    border-top: 2px solid var(--bg);
+  }
+  .items li {
+    border-bottom: 2px solid var(--bg);
+  }
+  .item {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    align-items: center;
+    gap: 8px 32px;
+    padding: 14px 0 16px;
+  }
+  .item-head {
+    flex-wrap: nowrap;
+    font-size: clamp(30px, 5vw, 80px);
+    font-weight: 800;
+    line-height: 0.95;
+    text-transform: uppercase;
+  }
+  .item-name {
+    min-width: 0;
+  }
+  .arr {
+    font-size: 0.6em;
+    margin-left: 0.15em;
+  }
+  .item-desc {
+    max-width: 52ch;
+    font-size: clamp(14px, 1.3vw, 19px);
+    font-weight: 500;
+    line-height: 1.4;
+    font-variation-settings: 'wdth' 100;
+  }
+  a.item:hover .item-name,
+  a.item:focus-visible .item-name {
+    color: var(--fg);
+  }
+  .soon {
+    opacity: 0.45;
+  }
+
+  .more {
+    display: inline-block;
+    margin-top: 28px;
+    font-size: clamp(18px, 2.4vw, 30px);
+    font-weight: 800;
+    text-transform: uppercase;
+    border-bottom: 2px solid currentColor;
+  }
+  .more:hover {
+    color: var(--fg);
+  }
+
+  @media (max-width: 720px) {
+    .item {
+      grid-template-columns: 1fr;
+    }
+    .item-desc {
+      padding-left: calc(1.7rem + 0.3em);
+    }
+    /* no numbers to line up with */
+    .plain .item-desc {
+      padding-left: 0;
+    }
+  }
+</style>

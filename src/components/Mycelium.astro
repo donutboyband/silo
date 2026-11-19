@@ -1,13 +1,14 @@
 ---
 // The Mycelium version's centrepiece: four nodes on a faint underground web.
-// Clicking a node grows its hyphae out to its projects; clicking a project
-// (or the node again) shows its card, which can open the full silo panel.
+// Clicking a node grows its roots out to its projects and
+// opens that silo's page in the bottom half, under the drawing.
 //
 // Two drawings are built: a wide one and a tall one for phones. CSS shows one.
 // The lines are drawn as roots (see src/lib/mycelium.ts).
 import { pillars } from '../data/catalog';
 import { grow, type Network } from '../lib/mycelium';
 import { usPaths } from '../lib/usmap';
+import SiloDetail from './SiloDetail.astro';
 
 // DeCamp's projects are places, so its roots grow onto a US map.
 const us = usPaths(1.2);
@@ -127,26 +128,24 @@ const drawings: { id: string; net: Network }[] = [
   }
 
 
-  {/* The card for whatever was picked. Text is filled in by the script. */}
-  <aside class="card" data-pillar="recording" hidden aria-live="polite">
-    <button class="card-x" type="button" aria-label="Close card">✕</button>
-    <p class="card-silo"></p>
-    <h2 class="card-name"></h2>
-    <p class="card-desc"></p>
-    <div class="card-links">
-      <a class="card-link" href="#" target="_blank" rel="noopener" hidden>Visit ↗</a>
-      <button class="card-open" type="button" data-open="silo-recording" aria-haspopup="dialog" aria-expanded="false">
-        Open silo ↗
-      </button>
-    </div>
-  </aside>
+  {/* Each silo's page, opened under the drawing when its node is clicked. */}
+  {
+    pillars.map((p, i) => (
+      <section class="detail" id={`detail-${p.key}`} data-pillar={p.key} hidden aria-labelledby={`inline-${p.key}-title`}>
+        <button class="detail-close" type="button" data-detail-close>
+          Close ✕
+        </button>
+        <SiloDetail p={p} i={i} idPrefix="inline" numbers={false} />
+      </section>
+    ))
+  }
 </div>
 
 <script>
   const reduce = matchMedia('(prefers-reduced-motion: reduce)');
   const root = document.querySelector<HTMLElement>('[data-myc]')!;
-  const card = root.querySelector<HTMLElement>('.card')!;
-  const q = <T extends Element>(s: string) => card.querySelector<T>(s)!;
+  const phone = matchMedia('(max-width: 640px)');
+  let current = ''; // the silo whose page is open below, if any
 
   // The faint web draws itself in once, when the page loads.
   if (!reduce.matches) {
@@ -192,29 +191,43 @@ const drawings: { id: string; net: Network }[] = [
     });
   }
 
-  // `silo` is the line above the title; `siloName` names the Open button.
-  function showCard(key: string, silo: string, siloName: string, title: string, desc: string, url = '', soon = false) {
-    card.setAttribute('data-pillar', key);
-    q<HTMLElement>('.card-silo').textContent = silo;
-    q<HTMLElement>('.card-name').textContent = title;
-    q<HTMLElement>('.card-desc').textContent = soon ? `Soon. ${desc}` : desc;
-    const link = q<HTMLAnchorElement>('.card-link');
-    link.hidden = !url || soon;
-    if (url) {
-      link.href = url;
-      const external = url.startsWith('http');
-      link.target = external ? '_blank' : '';
-      link.rel = external ? 'noopener' : '';
+  // Open a silo's page under the drawing. A project name, if given, is
+  // highlighted there (on DeCamp's map, its city is picked).
+  function showDetail(key: string, project?: string) {
+    const sec = root.querySelector<HTMLElement>(`#detail-${key}`)!;
+    const switching = current !== key;
+    root.querySelectorAll<HTMLElement>('.detail').forEach((d) => (d.hidden = d !== sec));
+    root.classList.add('has-detail');
+    current = key;
+    if (switching && !reduce.matches) {
+      sec.animate(
+        { clipPath: ['inset(0 0 100% 0)', 'inset(0 0 0 0)'] },
+        { duration: 650, easing: 'cubic-bezier(0.76, 0, 0.24, 1)' },
+      );
     }
-    const openBtn = q<HTMLButtonElement>('.card-open');
-    openBtn.dataset.open = `silo-${key}`;
-    openBtn.textContent = `Open ${siloName} ↗`;
-    // Dock the card on the side away from the node, so it never hides it.
-    const nodes = [...root.querySelectorAll<SVGGElement>(`.colony[data-node="${key}"] .node`)];
-    const shown = nodes.find((n) => n.ownerSVGElement!.checkVisibility()) ?? nodes[0];
-    const r = shown.getBoundingClientRect();
-    card.classList.toggle('left', r.left + r.width / 2 > innerWidth / 2);
-    card.hidden = false;
+    if (project) {
+      const dot = [...sec.querySelectorAll<SVGGElement>('.dot')].find((d) => d.getAttribute('aria-label')?.includes(project));
+      if (dot) dot.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      const row = [...sec.querySelectorAll<HTMLElement>('.item')].find((r) =>
+        r.querySelector('.item-name')?.textContent?.trim().startsWith(project),
+      );
+      const target = dot ?? row;
+      if (row) {
+        row.classList.remove('flash');
+        void row.offsetWidth;
+        row.classList.add('flash');
+      }
+      target?.scrollIntoView({ behavior: reduce.matches ? 'auto' : 'smooth', block: 'center' });
+    } else if (phone.matches) {
+      // on a phone the page is below the drawing: go to it once the roots have grown
+      setTimeout(() => sec.scrollIntoView({ behavior: reduce.matches ? 'auto' : 'smooth' }), reduce.matches ? 0 : 1100);
+    }
+  }
+
+  function hideDetail() {
+    root.querySelectorAll<HTMLElement>('.detail').forEach((d) => (d.hidden = true));
+    root.classList.remove('has-detail');
+    current = '';
   }
 
   const activate = (el: Element, fn: () => void) => {
@@ -233,31 +246,25 @@ const drawings: { id: string; net: Network }[] = [
     activate(node, () => {
       const open = node.getAttribute('aria-expanded') !== 'true';
       setColony(key, open);
-      if (open) showCard(key, '', node.dataset.name!, node.dataset.name!, node.dataset.desc!);
-      else if (card.dataset.pillar === key) card.hidden = true;
+      if (open) showDetail(key);
+      else if (current === key) hideDetail();
     });
   });
 
   root.querySelectorAll<SVGGElement>('.tip').forEach((tip) => {
     const col = tip.closest<SVGGElement>('.colony')!;
-    const node = col.querySelector<SVGGElement>('.node')!;
-    activate(tip, () =>
-      showCard(
-        col.dataset.node!,
-        node.dataset.name!,
-        node.dataset.name!,
-        tip.dataset.name!,
-        tip.dataset.desc!,
-        tip.dataset.url,
-        tip.dataset.soon === '1',
-      ),
-    );
+    activate(tip, () => showDetail(col.dataset.node!, tip.dataset.name!));
   });
 
-  q('.card-x').addEventListener('click', () => (card.hidden = true));
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !document.querySelector('dialog[open]')) card.hidden = true;
-  });
+  // Close folds that silo's roots too.
+  root.querySelectorAll<HTMLElement>('[data-detail-close]').forEach((b) =>
+    b.addEventListener('click', () => {
+      const key = current;
+      hideDetail();
+      if (key) setColony(key, false);
+      root.querySelector<SVGGElement>(`.net:not([hidden]) .colony[data-node="${key}"] .node`)?.focus();
+    }),
+  );
 </script>
 
 <style>
@@ -444,86 +451,62 @@ const drawings: { id: string; net: Network }[] = [
     font-size: 27px;
   }
 
-  /* ---------- the card ---------- */
-  .card {
-    position: fixed;
-    right: 16px;
-    bottom: 16px;
-    z-index: 3;
-    width: min(380px, calc(100vw - 32px));
-    padding: 16px 18px 18px;
+  /* With a silo open below, the drawing shrinks so both fit on screen. */
+  .wide {
+    transition: max-width 0.6s cubic-bezier(0.76, 0, 0.24, 1);
+  }
+  .myc.has-detail .wide {
+    max-width: min(100%, 84vh);
+  }
+
+  /* ---------- a silo's page, under the drawing ---------- */
+  .detail {
+    position: relative;
+    margin: clamp(16px, 2.5vw, 32px) -16px -48px;
+    padding: 12px 16px 64px;
+    min-height: 60vh;
+    /* when scrolled to, stop below the fixed top bar */
+    scroll-margin-top: 56px;
     background: var(--c);
     color: var(--bg);
-    box-shadow: 8px 8px 0 var(--fg);
-    font-variation-settings: 'wdth' 100;
+    /* undo the big title type this sits inside */
+    font-size: 16px;
+    font-weight: 400;
+    line-height: normal;
+    letter-spacing: normal;
+    text-transform: none;
   }
-  .card.left {
-    right: auto;
-    left: 16px;
-  }
-  .card[hidden] {
+  .detail[hidden] {
     display: none;
   }
-  .card-x {
+  .detail-close {
     all: unset;
-    position: absolute;
-    top: 10px;
-    right: 12px;
+    float: right;
+    margin-left: 16px;
     cursor: pointer;
-    font-size: 16px;
+    font-size: clamp(18px, 2.4vw, 26px);
     font-weight: 800;
+    text-transform: uppercase;
   }
-  .card-x:focus-visible,
-  .card-open:focus-visible,
-  .card-link:focus-visible {
+  .detail-close:hover {
+    color: var(--fg);
+  }
+  .detail-close:focus-visible {
     outline: 2px solid var(--bg);
     outline-offset: 2px;
   }
-  .card-silo:empty {
-    display: none;
+  /* a project picked on the drawing flashes in the list */
+  .detail :global(.item.flash) {
+    animation: flash 1.6s ease-out;
   }
-  .card-silo {
-    margin: 0 28px 6px 0;
-    font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
-    opacity: 0.7;
-  }
-  .card-name {
-    margin: 0 0 10px;
-    font-size: clamp(24px, 2.6vw, 34px);
-    font-weight: 800;
-    line-height: 0.95;
-    text-transform: uppercase;
-    font-variation-settings: 'wdth' 75;
-  }
-  .card-desc {
-    margin: 0;
-    font-size: 14px;
-    font-weight: 500;
-    line-height: 1.45;
-  }
-  .card-links {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px 18px;
-    margin-top: 14px;
-  }
-  .card-link,
-  .card-open {
-    all: unset;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 800;
-    text-transform: uppercase;
-    border-bottom: 2px solid currentColor;
-  }
-  .card-link[hidden] {
-    display: none;
-  }
-  .card-link:hover,
-  .card-open:hover {
-    color: var(--fg);
+  @keyframes flash {
+    0%,
+    30% {
+      background: rgb(0 0 0 / 0.14);
+    }
+    100% {
+      background: transparent;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
