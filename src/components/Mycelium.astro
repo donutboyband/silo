@@ -617,7 +617,12 @@ const drawings: { id: string; net: Network; ring: number }[] = [
   }
 
   /* With a silo open below, the drawing shrinks so both fit on screen. */
+  /* Fit the whole network on screen under the title and banner, however short
+     the window. The title grows with the window's width (about 1.14 x its
+     font size, which is (100vw - 60px) / 11), plus ~88px of banner and
+     spacing. 1.613 is the drawing's width-to-height. */
   .wide {
+    max-width: min(1200px, calc((100svh - 88px - (100vw - 60px) * 0.1036) * 1.613));
     transition: max-width 0.6s cubic-bezier(0.76, 0, 0.24, 1);
   }
   .myc.has-detail .wide {
