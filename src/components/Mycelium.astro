@@ -7,6 +7,10 @@
 // The lines are drawn as roots (see src/lib/mycelium.ts).
 import { pillars } from '../data/catalog';
 import { grow, type Network } from '../lib/mycelium';
+import { usPaths } from '../lib/usmap';
+
+// DeCamp's projects are places, so its roots grow onto a US map.
+const us = usPaths(1.2);
 
 const drawings: { id: string; net: Network }[] = [
   {
@@ -16,12 +20,14 @@ const drawings: { id: string; net: Network }[] = [
       h: 620,
       at: [
         { x: 250, y: 185 },
-        { x: 745, y: 165 },
+        { x: 655, y: 150 },
         { x: 280, y: 450 },
         { x: 735, y: 460 },
       ],
       reach: [150, 205],
       seed: 7,
+      // top-right quarter; the DeCamp node sits out west, so its roots cross the country
+      maps: { decamp: { x: 500, y: 12, s: 0.5 } },
     }),
   },
   {
@@ -31,7 +37,7 @@ const drawings: { id: string; net: Network }[] = [
       h: 1180,
       at: [
         { x: 200, y: 200 },
-        { x: 400, y: 480 },
+        { x: 295, y: 472 },
         { x: 200, y: 760 },
         { x: 400, y: 1010 },
       ],
@@ -39,6 +45,7 @@ const drawings: { id: string; net: Network }[] = [
       seed: 11,
       charW: 13.2,
       labels: 'stack',
+      maps: { decamp: { x: 20, y: 300, s: 0.574 } },
     }),
   },
 ];
@@ -61,6 +68,12 @@ const drawings: { id: string; net: Network }[] = [
 
         {net.nodes.map((n) => (
           <g class="colony" data-pillar={n.key} data-node={n.key}>
+            {n.map && (
+              <g class="usmap" transform={`translate(${n.map.x} ${n.map.y}) scale(${n.map.s})`} aria-hidden="true">
+                <path class="us-nation" d={us.nation} pathLength="1" vector-effect="non-scaling-stroke" />
+                <path class="us-borders" d={us.borders} vector-effect="non-scaling-stroke" />
+              </g>
+            )}
             <g class="hyphae" aria-hidden="true">
               {n.lines.map((h) => (
                 <path d={h.d} stroke-width={h.w} pathLength="1" data-delay={h.delay} data-dur={h.dur} />
@@ -113,8 +126,6 @@ const drawings: { id: string; net: Network }[] = [
     ))
   }
 
-  <p class="hint">Click a node to grow it. Click again to fold it back.</p>
-
 
   {/* The card for whatever was picked. Text is filled in by the script. */}
   <aside class="card" data-pillar="recording" hidden aria-live="polite">
@@ -155,6 +166,13 @@ const drawings: { id: string; net: Network }[] = [
       if (reduce.matches) return;
       const visible = col.ownerSVGElement!.checkVisibility();
       if (!visible) return;
+      // a map (DeCamp) outlines itself first, then the roots grow across it
+      col.querySelectorAll<SVGPathElement>('.us-nation').forEach((p) =>
+        p.animate({ strokeDashoffset: open ? [1, 0] : [0, 1] }, open ? { duration: 900, easing: 'ease-out' } : { duration: 350 }),
+      );
+      col.querySelectorAll<SVGGElement>('.usmap').forEach((m) =>
+        m.animate({ opacity: open ? [0, 1] : [1, 0] }, open ? { duration: 500 } : { duration: 350 }),
+      );
       col.querySelectorAll<SVGPathElement>('.hyphae path').forEach((p) => {
         const delay = Number(p.dataset.delay);
         const dur = Number(p.dataset.dur);
@@ -294,6 +312,30 @@ const drawings: { id: string; net: Network }[] = [
     stroke-dashoffset: 0;
   }
 
+  /* DeCamp's map: hidden until its node opens */
+  .usmap {
+    visibility: hidden;
+    opacity: 0;
+  }
+  .open .usmap {
+    visibility: visible;
+    opacity: 1;
+  }
+  .us-nation {
+    fill: color-mix(in srgb, var(--c) 3%, transparent);
+    stroke: var(--c);
+    stroke-width: 1.2;
+    stroke-opacity: 0.6;
+    stroke-dashoffset: 0;
+  }
+  .us-borders {
+    fill: none;
+    stroke: var(--c);
+    stroke-width: 0.6;
+    stroke-opacity: 0.25;
+    stroke-dasharray: 2 3;
+  }
+
   /* project tips */
   .tip {
     cursor: pointer;
@@ -400,15 +442,6 @@ const drawings: { id: string; net: Network }[] = [
   }
   .tall .node-label {
     font-size: 27px;
-  }
-
-  .hint {
-    margin: 12px 0 0;
-    text-align: center;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--dim);
-    font-variation-settings: 'wdth' 100;
   }
 
   /* ---------- the card ---------- */

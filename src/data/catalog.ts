@@ -149,7 +149,7 @@ export const pillars: Pillar[] = [
       },
       {
         no: '2',
-        name: 'Willow Drop',
+        name: 'Song Seed',
         desc: 'One unreleased song every Monday, then the story of how it was made, a day at a time: the interview, the room, the credits, the session photos and every version from voice memo to master. You live with it for five days before anyone else hears it.',
         url: 'https://drop.willow.fm',
       },

@@ -6,6 +6,7 @@
 // SVG paths and no drawing code.
 
 import type { Pillar } from '../data/catalog';
+import { placeOnMap } from './usmap';
 
 type Pt = { x: number; y: number };
 
@@ -41,6 +42,8 @@ export interface Node {
   x: number;
   y: number;
   labelBelow: boolean;
+  /** where this node's US map sits, if its projects are places (DeCamp) */
+  map?: { x: number; y: number; s: number };
   lines: Line[];
   tips: Tip[];
 }
@@ -88,6 +91,8 @@ export function grow(
     seed: number;
     charW?: number;
     labels?: 'side' | 'stack';
+    /** per pillar key: a US map box (top-left corner and scale) its places land on */
+    maps?: Record<string, { x: number; y: number; s: number }>;
   },
 ): Network {
   const rand = rng(layout.seed);
@@ -146,8 +151,26 @@ export function grow(
     const spread = Math.min(2.4, 0.72 * n);
     const DRAW = 900;
 
-    // where each project sits
+    // A node whose projects are places draws a map first; roots grow after it.
+    const box = layout.maps?.[p.key];
+    const lag = box ? 350 : 0;
+
+    // where each project sits: on the map at its real spot, or fanned outward
     const tipPts = p.items.map((it, k) => {
+      if (box && it.at) {
+        const m = placeOnMap(it.at);
+        const pt = { x: box.x + m.x * box.s, y: box.y + m.y * box.s };
+        const side = it.labelSide ?? 'right';
+        const sideOk = !stack && (side === 'left' || side === 'right');
+        return {
+          it,
+          ang: Math.atan2(pt.y - o.y, pt.x - o.x),
+          pt,
+          right: sideOk && side === 'right',
+          left: sideOk && side === 'left',
+          above: side === 'above' || (stack && side !== 'below'),
+        };
+      }
       const t = n === 1 ? 0 : k / (n - 1) - 0.5;
       const ang = out + t * spread + (rand() - 0.5) * 0.12;
       const dist = layout.reach[0] + rand() * (layout.reach[1] - layout.reach[0]);
@@ -157,7 +180,7 @@ export function grow(
       const lw = labelW(it.name);
       const raw = clamp(polar(o, ang, dist));
       const x = right ? Math.min(raw.x, w - 8 - lw) : left ? Math.max(raw.x, 8 + lw) : Math.min(w - lw / 2, Math.max(lw / 2, raw.x));
-      return { it, ang, pt: { x, y: raw.y }, right, left };
+      return { it, ang, pt: { x, y: raw.y }, right, left, above: undefined as boolean | undefined };
     });
 
     {
@@ -178,21 +201,25 @@ export function grow(
           if (inside(end)) limb(from, end, wd * 0.55, delay + t * (420 + depth * 120), depth - 1);
         }
       };
-      tipPts.forEach(({ pt }, k) => limb(o, pt, 3.2, k * 80, 2));
+      tipPts.forEach(({ pt }, k) => limb(o, pt, 3.2, lag + k * 80, 2));
     }
 
-    tipPts.forEach(({ it, ang, pt, right, left }, k) => {
+    tipPts.forEach(({ it, ang, pt, right, left, above }, k) => {
+      const up = above ?? Math.sin(ang) <= 0;
+      // a centred label that would run off the drawing slides back in
+      const half = labelW(it.name) / 2;
+      const slide = right || left ? 0 : Math.min(w - 4 - half - pt.x, Math.max(4 + half - pt.x, 0));
       tips.push({
         x: r1(pt.x),
         y: r1(pt.y),
-        lx: right ? 12 : left ? -12 : 0,
-        ly: right || left ? 5 : Math.sin(ang) > 0 ? (stack ? 32 : 24) : stack ? -16 : -14,
+        lx: right ? 12 : left ? -12 : r1(slide),
+        ly: right || left ? 5 : up ? (stack ? -16 : -14) : stack ? 32 : 24,
         anchor: right ? 'start' : left ? 'end' : 'middle',
         name: it.name,
         desc: it.desc,
         url: it.url,
         soon: it.soon,
-        delay: DRAW - 100 + k * 80,
+        delay: lag + DRAW - 100 + k * 80,
       });
     });
 
@@ -227,6 +254,7 @@ export function grow(
       x: o.x,
       y: o.y,
       labelBelow: o.y < center.y,
+      map: box,
       lines,
       tips,
     };
