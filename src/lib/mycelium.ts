@@ -117,31 +117,72 @@ export function grow(
   const labelW = (s: string) => s.length * charW + 14;
 
   // ---------------------------------------------------------------- the web
+  // Hyphae: hair-fine threads that wander and keep forking into finer hairs,
+  // like mycelium spreading through soil. Each node has a light halo of them
+  // in its colour, and two faint threads link the nodes (top pair and bottom
+  // pair), each fading from one node's colour to the other's halfway along.
   const web: Line[] = [];
+  const poly = (pts: Pt[]) => 'M' + pts.map(P).join(' L');
 
-  {
-    // a soft halo of fine rootlets around each node, in its silo's colour
-    // (no threads between nodes: that read as too busy)
-    at.forEach((o, i) => {
-      for (let k = 0; k < 5; k++) {
-        const ang = (k / 5) * Math.PI * 2 + rand() * 0.9;
-        rootlet(o, ang, 60 + rand() * 60, 0.7, 1, pillars[i].key);
+  /** a wandering thread from `o`, heading `ang`, about `len` long */
+  function hypha(o: Pt, ang: number, len: number, wd: number, depth: number, c: string, op: number) {
+    const pts: Pt[] = [o];
+    let p = o;
+    let a = ang;
+    for (let d = 0; d < len; d += 6) {
+      a += (rand() - 0.5) * 0.35;
+      p = polar(p, a, 6);
+      if (!inside(p)) break;
+      pts.push(p);
+    }
+    if (pts.length < 3) return;
+    web.push({ d: poly(pts), w: wd, o: op, c });
+    if (depth <= 0) return;
+    // forks every so often, off to either side at a sharp angle
+    for (let k = 3; k < pts.length - 2; k += 3 + Math.floor(rand() * 4)) {
+      if (rand() < 0.55) {
+        const prev = pts[k - 1];
+        const dir = Math.atan2(pts[k].y - prev.y, pts[k].x - prev.x);
+        hypha(pts[k], dir + (rand() < 0.5 ? -1 : 1) * (0.45 + rand() * 0.4), len * (0.3 + rand() * 0.25), wd * 0.75, depth - 1, c, op * 0.85);
       }
-    });
+    }
   }
 
-  function rootlet(o: Pt, ang: number, len: number, wd: number, depth: number, c: string) {
-    const end = polar(o, ang, len);
-    const bend = ang + (rand() - 0.5) * 0.9;
-    const c1 = polar(o, bend, len * 0.4);
-    const c2 = polar(o, ang + (rand() - 0.5) * 0.4, len * 0.75);
-    if (!inside(end)) return;
-    web.push({ d: curve(o, c1, c2, end), w: wd, o: 0.18 + depth * 0.08, c });
-    if (depth > 0)
-      for (let k = 0; k < 2; k++) {
-        const t = 0.35 + rand() * 0.5;
-        rootlet(onCurve(o, c1, c2, end, t), ang + (rand() < 0.5 ? -1 : 1) * (0.4 + rand() * 0.5), len * 0.5, wd * 0.7, depth - 1, c);
-      }
+  at.forEach((o, i) => {
+    for (let k = 0; k < 7; k++) {
+      const ang = (k / 7) * Math.PI * 2 + rand() * 0.7;
+      // start at the disc's edge, so the threads aren't hidden under it
+      hypha(polar(o, ang, nodeR * 0.9), ang, 80 + rand() * 80, 0.55, 2, pillars[i].key, 0.34);
+    }
+  });
+
+  // two faint links, gently wavering, coloured half and half
+  for (const [i, j] of [
+    [0, 1],
+    [2, 3],
+  ]) {
+    const a = at[i];
+    const b = at[j];
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    const nx = -(b.y - a.y) / len;
+    const ny = (b.x - a.x) / len;
+    const pts: Pt[] = [];
+    const n = Math.round(len / 8);
+    let off = 0;
+    for (let s = 0; s <= n; s++) {
+      const t = s / n;
+      off = off * 0.85 + (rand() - 0.5) * 3;
+      const sway = Math.sin(t * Math.PI) * (18 + off * 3);
+      pts.push({ x: a.x + (b.x - a.x) * t + nx * sway, y: a.y + (b.y - a.y) * t + ny * sway });
+    }
+    const mid = Math.floor(pts.length / 2);
+    web.push({ d: poly(pts.slice(0, mid + 1)), w: 0.5, o: 0.22, c: pillars[i].key });
+    web.push({ d: poly(pts.slice(mid)), w: 0.5, o: 0.22, c: pillars[j].key });
+    // a few hairs off the link
+    for (let k = 4; k < pts.length - 4; k += 9 + Math.floor(rand() * 8)) {
+      const dir = Math.atan2(pts[k + 1].y - pts[k].y, pts[k + 1].x - pts[k].x);
+      hypha(pts[k], dir + (rand() < 0.5 ? -1 : 1) * (0.6 + rand() * 0.4), 18 + rand() * 22, 0.4, 1, pillars[k < mid ? i : j].key, 0.2);
+    }
   }
 
   // ---------------------------------------------------------------- the nodes
