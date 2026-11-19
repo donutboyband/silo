@@ -74,7 +74,6 @@ function rng(seed: number) {
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
 const P = (p: Pt) => `${r1(p.x)} ${r1(p.y)}`;
-const lerp = (a: Pt, b: Pt, t: number): Pt => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
 const polar = (o: Pt, ang: number, d: number): Pt => ({ x: o.x + Math.cos(ang) * d, y: o.y + Math.sin(ang) * d });
 const curve = (a: Pt, c1: Pt, c2: Pt, b: Pt) => `M${P(a)} C${P(c1)} ${P(c2)} ${P(b)}`;
 
@@ -121,29 +120,14 @@ export function grow(
   const web: Line[] = [];
 
   {
-    // fine rootlets spreading from each node in its silo's colour, and threads
-    // between every pair of nodes, one in each of the pair's colours
+    // a soft halo of fine rootlets around each node, in its silo's colour
+    // (no threads between nodes: that read as too busy)
     at.forEach((o, i) => {
-      for (let k = 0; k < 7; k++) {
-        const ang = rand() * Math.PI * 2;
-        rootlet(o, ang, 70 + rand() * 80, 0.8, 2, pillars[i].key);
+      for (let k = 0; k < 5; k++) {
+        const ang = (k / 5) * Math.PI * 2 + rand() * 0.9;
+        rootlet(o, ang, 60 + rand() * 60, 0.7, 1, pillars[i].key);
       }
     });
-    for (let i = 0; i < at.length; i++)
-      for (let j = i + 1; j < at.length; j++) {
-        const a = at[i];
-        const b = at[j];
-        const m = lerp(a, b, 0.5);
-        for (const k of [i, j]) {
-          const off = (rand() - 0.5) * 140;
-          web.push({
-            d: curve(a, { x: m.x + off, y: m.y - off }, { x: m.x - off * 0.5, y: m.y + off * 0.5 }, b),
-            w: 0.7,
-            o: 0.45,
-            c: pillars[k].key,
-          });
-        }
-      }
   }
 
   function rootlet(o: Pt, ang: number, len: number, wd: number, depth: number, c: string) {
@@ -152,7 +136,7 @@ export function grow(
     const c1 = polar(o, bend, len * 0.4);
     const c2 = polar(o, ang + (rand() - 0.5) * 0.4, len * 0.75);
     if (!inside(end)) return;
-    web.push({ d: curve(o, c1, c2, end), w: wd, o: 0.32 + depth * 0.08, c });
+    web.push({ d: curve(o, c1, c2, end), w: wd, o: 0.18 + depth * 0.08, c });
     if (depth > 0)
       for (let k = 0; k < 2; k++) {
         const t = 0.35 + rand() * 0.5;
