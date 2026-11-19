@@ -189,7 +189,16 @@ const drawings: { id: string; net: Network; ring: number }[] = [
         <button class="focus-back" type="button" data-focus-back>
           ← All silos
         </button>
-        <SiloDetail p={p} i={i} idPrefix="focus" numbers={false} compact map={false} />
+        {/* Places (DeCamp) are already on the map beside it: just the summary. */}
+        <SiloDetail
+          p={p}
+          i={i}
+          idPrefix="focus"
+          numbers={false}
+          compact
+          map={false}
+          projects={!p.items.some((it) => it.at)}
+        />
       </aside>
     ))
   }

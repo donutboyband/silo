@@ -18,8 +18,10 @@ interface Props {
   compact?: boolean;
   /** places get a map; false lists them instead (when a map is shown elsewhere) */
   map?: boolean;
+  /** false: leave the projects out entirely (just the summary) */
+  projects?: boolean;
 }
-const { p, i, idPrefix, numbers = true, compact = false, map = true } = Astro.props;
+const { p, i, idPrefix, numbers = true, compact = false, map = true, projects = true } = Astro.props;
 const isExternal = (url?: string) => !!url?.startsWith('http');
 ---
 
@@ -72,7 +74,7 @@ const isExternal = (url?: string) => !!url?.startsWith('http');
 </div>
 
 {/* Silos whose items are places (DeCamp) get a map; the rest a list. */}
-{map && p.items.some((it) => it.at) ? (
+{!projects ? null : map && p.items.some((it) => it.at) ? (
   <PlaceMap id={`${idPrefix}-${p.key}`} items={p.items} />
 ) : (
 <ul class:list={['items', { plain: !numbers }]}>
