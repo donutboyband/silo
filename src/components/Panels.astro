@@ -1,0 +1,603 @@
+---
+// The full-screen panels: About, and one per silo. Each opens out of the
+// button that names it with data-open="<panel id>" (a silo circle, a node,
+// the SILO title), growing from that button as a circle.
+import { pillars, label, about } from '../data/catalog';
+import { socialMenus, accountFor } from '../data/social-menus';
+import PlaceMap from './PlaceMap.astro';
+import SocialIcon from './SocialIcon.astro';
+
+const isExternal = (url?: string) => !!url?.startsWith('http');
+---
+
+  {/* ---------- About: opens from the SILO title ---------- */}
+  <dialog class="panel" id="silo-about" data-pillar="about" aria-labelledby="silo-about-title">
+    <div class="inner">
+      <button class="close" type="button" data-close>
+        Close ✕
+      </button>
+
+      <h2 class="panel-title row" id="silo-about-title">
+        <span class="tag"><i>est</i>{label.year}</span>
+        <span class="name">About Silo</span>
+      </h2>
+
+      <div class="about-body">
+        {about.summary.map((t) => <p class="about-lede">{t}</p>)}
+      </div>
+
+      <section class="about-sec">
+        <h3 class="about-h">The four silos</h3>
+        <ol class="about-silos">
+          {
+            pillars.map((p, i) => (
+              <li data-pillar={p.key}>
+                <span class="swatch" aria-hidden="true" />
+                <span class="about-silo-no">#{String(i + 1).padStart(2, '0')}</span>
+                <span class="about-silo-name">{p.name}</span>
+                <span class="about-silo-desc">{p.desc}</span>
+              </li>
+            ))
+          }
+        </ol>
+      </section>
+
+      <section class="about-sec">
+        <h3 class="about-h">Team</h3>
+        <ul class="team">
+          {
+            about.team.map((m) => (
+              <li>
+                <p class="team-name">{m.name}</p>
+                <p class="team-role">{m.role}</p>
+                <p class="team-bio">{m.bio}</p>
+              </li>
+            ))
+          }
+        </ul>
+      </section>
+    </div>
+  </dialog>
+
+  {
+    pillars.map((p, i) => (
+      <dialog class="panel" id={`silo-${p.key}`} data-pillar={p.key} aria-labelledby={`silo-${p.key}-title`}>
+        <div class="inner">
+          <button class="close" type="button" data-close>
+            Close ✕
+          </button>
+
+          <h2 class="panel-title row" id={`silo-${p.key}-title`}>
+            <span class="tag">
+              <i>#</i>
+              {String(i + 1).padStart(2, '0')}
+            </span>
+            <span class="name">{p.name}</span>
+          </h2>
+
+          <div class="panel-intro">
+            <p class="panel-desc">{p.desc}</p>
+
+            {/* Sign up and follow, just for this silo. Placeholder: sends nothing yet. */}
+            <div class="optin">
+              <form class="optin-form" novalidate>
+                <p class="optin-title">Get {p.name} updates</p>
+                <input type="hidden" name="list" value={p.key} />
+                <label class="sr" for={`optin-${p.key}`}>Email address</label>
+                <div class="optin-row">
+                  <input
+                    id={`optin-${p.key}`}
+                    type="email"
+                    name="email"
+                    placeholder="you@email.com"
+                    autocomplete="email"
+                    required
+                  />
+                  <button type="submit">Sign up</button>
+                </div>
+                <p class="optin-note" role="status"></p>
+              </form>
+
+              <div class="follow">
+                <span class="follow-label">Follow</span>
+                {socialMenus.map((m) => {
+                  const acct = accountFor(m, p.socialName);
+                  const name = `${p.socialName} on ${m.title}`;
+                  return acct?.url ? (
+                    <a class="follow-icon" href={acct.url} target="_blank" rel="noopener" aria-label={name}>
+                      <SocialIcon kind={m.id} />
+                    </a>
+                  ) : (
+                    <span class="follow-icon soon-icon" role="img" aria-label={`${name}, coming soon`} title="Coming soon">
+                      <SocialIcon kind={m.id} />
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Silos whose items are places (DeCamp) get a map; the rest a list. */}
+          {p.items.some((it) => it.at) ? (
+            <PlaceMap id={`silo-${p.key}`} items={p.items} />
+          ) : (
+          <ul class="items">
+            {p.items.map((it) => {
+              const Tag = it.soon || !it.url ? 'span' : 'a';
+              return (
+                <li>
+                  <Tag
+                    class:list={['item', { soon: it.soon }]}
+                    href={Tag === 'a' ? it.url : undefined}
+                    target={Tag === 'a' && isExternal(it.url) ? '_blank' : undefined}
+                    rel={Tag === 'a' && isExternal(it.url) ? 'noopener' : undefined}
+                  >
+                    <span class="row item-head">
+                      <span class="tag">
+                        <i>#</i>
+                        {it.no}
+                      </span>
+                      <span class="item-name">
+                        {it.name}
+                        {Tag === 'a' && <span class="arr">↗</span>}
+                      </span>
+                    </span>
+                    <span class="item-desc">{it.soon ? `Soon. ${it.desc}` : it.desc}</span>
+                  </Tag>
+                </li>
+              );
+            })}
+          </ul>
+          )}
+
+          {p.url && (
+            <a class="more" href={p.url}>
+              {p.urlLabel ?? 'More'} ↗
+            </a>
+          )}
+        </div>
+      </dialog>
+    ))
+  }
+
+<script>
+  // Each silo opens as a circle that grows out of the one you clicked until it
+  // fills the screen, then closes back into it. Everything is set through the
+  // Web Animations API, so the CSP never has to allow inline styles.
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)');
+  const ease = 'cubic-bezier(0.76, 0, 0.24, 1)';
+
+  // The button a panel opens from: a silo circle, or the SILO title for About.
+  const circleBtn = (id: string) => document.querySelector<HTMLElement>(`[data-open="${id}"]`)!;
+
+  function circles(btn: HTMLElement) {
+    // Grow from the silo's circle, or from the middle of the title.
+    const r = (btn.querySelector('.disc, .name') ?? btn).getBoundingClientRect();
+    const x = r.left + r.width / 2;
+    const y = r.top + r.height / 2;
+    const far = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+    return {
+      small: `circle(${Math.min(r.width, r.height) / 2}px at ${x}px ${y}px)`,
+      big: `circle(${far}px at ${x}px ${y}px)`,
+    };
+  }
+
+  function open(btn: HTMLElement) {
+    const panel = document.getElementById(btn.dataset.open!) as HTMLDialogElement;
+    panel.showModal();
+    panel.scrollTop = 0;
+    document.documentElement.classList.add('locked');
+    btn.setAttribute('aria-expanded', 'true');
+    if (reduce.matches) return;
+
+    const c = circles(btn);
+    panel.animate({ clipPath: [c.small, c.big] }, { duration: 750, easing: ease });
+    panel.querySelector('.inner')!.animate(
+      { opacity: [0, 1], transform: ['translateY(28px)', 'none'] },
+      { duration: 450, delay: 380, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)', fill: 'backwards' },
+    );
+  }
+
+  async function close(panel: HTMLDialogElement) {
+    if (panel.dataset.closing) return;
+    panel.dataset.closing = '1';
+    const btn = circleBtn(panel.id);
+
+    if (!reduce.matches) {
+      const c = circles(btn);
+      panel.querySelector('.inner')!.animate({ opacity: [1, 0] }, { duration: 160, fill: 'forwards' });
+      await panel.animate({ clipPath: [c.big, c.small] }, { duration: 600, easing: ease, fill: 'forwards' })
+        .finished;
+    }
+
+    panel.close();
+    panel.getAnimations({ subtree: true }).forEach((a) => a.cancel());
+    delete panel.dataset.closing;
+    document.documentElement.classList.remove('locked');
+    btn.setAttribute('aria-expanded', 'false');
+    btn.focus();
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-open]').forEach((btn) => {
+    btn.addEventListener('click', () => open(btn));
+  });
+
+  // ---------- Per-silo sign-up forms (inside each open silo) ----------
+  document.querySelectorAll<HTMLFormElement>('.optin-form').forEach((form) => {
+    const out = form.querySelector<HTMLElement>('.optin-note')!;
+    const email = form.querySelector<HTMLInputElement>('input[type="email"]')!;
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!email.checkValidity()) {
+        out.textContent = 'That email address doesn’t look right.';
+        email.focus();
+      } else {
+        // TODO: send to the newsletter service (list: form.list.value) once one is chosen.
+        out.textContent = 'Thanks! Sign-ups aren’t live yet, so nothing was sent.';
+      }
+    });
+  });
+
+  // Clicking a name under the stack opens its silo out of the circle.
+  document.querySelectorAll<HTMLElement>('[data-open-via]').forEach((btn) => {
+    btn.addEventListener('click', () => open(circleBtn(btn.dataset.openVia!)));
+  });
+
+  document.querySelectorAll<HTMLDialogElement>('dialog.panel').forEach((panel) => {
+    // Escape key
+    panel.addEventListener('cancel', (e) => {
+      e.preventDefault();
+      close(panel);
+    });
+    panel.querySelector('[data-close]')!.addEventListener('click', () => close(panel));
+  });
+</script>
+
+<style>
+  h2,
+  p,
+  ul {
+    margin: 0;
+    padding: 0;
+    font: inherit;
+    list-style: none;
+  }
+
+  /* ---------- About panel (white) ---------- */
+  .about-body {
+    margin-top: clamp(16px, 2.5vw, 36px);
+    max-width: 40ch;
+  }
+  .about-lede {
+    font-size: clamp(18px, 2.2vw, 32px);
+    font-weight: 600;
+    line-height: 1.3;
+    font-variation-settings: 'wdth' 100;
+  }
+  .about-lede + .about-lede {
+    margin-top: 0.8em;
+  }
+  .about-sec {
+    margin-top: clamp(36px, 5vw, 72px);
+    padding-top: 14px;
+    border-top: 2px solid var(--bg);
+  }
+  .about-h {
+    margin: 0 0 18px;
+    font-size: 14px;
+    font-weight: 800;
+    text-transform: uppercase;
+    font-variation-settings: 'wdth' 100;
+  }
+  .about-silos {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 24px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .about-silos li {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .swatch {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--c);
+    border: 2px solid var(--bg);
+    margin-bottom: 4px;
+  }
+  .about-silo-no {
+    font-size: 12px;
+    font-weight: 600;
+    opacity: 0.6;
+    font-variation-settings: 'wdth' 100;
+  }
+  .about-silo-name {
+    font-size: clamp(20px, 2vw, 28px);
+    font-weight: 800;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  .about-silo-desc {
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.4;
+    font-variation-settings: 'wdth' 100;
+  }
+  .team {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px 40px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .team-name {
+    font-size: clamp(28px, 3.4vw, 52px);
+    font-weight: 800;
+    line-height: 0.95;
+    text-transform: uppercase;
+  }
+  .team-role {
+    margin-top: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-variation-settings: 'wdth' 100;
+    opacity: 0.6;
+  }
+  .team-bio {
+    margin-top: 10px;
+    max-width: 42ch;
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.45;
+    font-variation-settings: 'wdth' 100;
+  }
+  @media (max-width: 900px) {
+    .about-silos {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 560px) {
+    .about-silos,
+    .team {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* ---------- an open silo ---------- */
+  .panel {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100dvh;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: var(--c);
+    color: var(--bg);
+    font-family: var(--f-mono);
+    font-variation-settings: 'wdth' 75;
+  }
+  .panel::backdrop {
+    background: transparent;
+  }
+  .inner {
+    min-height: 100%;
+    padding: 12px 16px 64px;
+  }
+  .panel .tag {
+    color: inherit;
+    opacity: 0.6;
+  }
+
+  .close {
+    all: unset;
+    position: sticky;
+    top: 0;
+    float: right;
+    margin-left: 16px;
+    cursor: pointer;
+    font-size: clamp(18px, 2.4vw, 26px);
+    font-weight: 800;
+    text-transform: uppercase;
+    background: var(--c);
+    padding: 0 0 4px 8px;
+  }
+  .close:hover {
+    color: var(--fg);
+  }
+  .close:focus-visible {
+    outline: 2px solid var(--bg);
+    outline-offset: 2px;
+  }
+
+  .panel-title {
+    font-size: clamp(40px, calc((100vw - 60px) / 11), 160px);
+    font-weight: 800;
+    line-height: 0.94;
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+  }
+  /* description on the left, sign-up + follow on the right */
+  .panel-intro {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+    gap: clamp(20px, 4vw, 64px);
+    align-items: start;
+    margin-top: clamp(16px, 2.5vw, 36px);
+  }
+  .optin {
+    padding: 16px;
+    border: 2px solid var(--bg);
+    font-variation-settings: 'wdth' 100;
+  }
+  .optin-title {
+    margin: 0 0 10px;
+    font-size: 14px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  .optin-row {
+    display: flex;
+    gap: 8px;
+  }
+  .optin-row input {
+    flex: 1;
+    min-width: 0;
+    padding: 9px 10px;
+    border: 2px solid var(--bg);
+    background: transparent;
+    color: var(--bg);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .optin-row input::placeholder {
+    color: rgb(0 0 0 / 0.5);
+  }
+  .optin-row input:focus-visible {
+    outline: 2px solid var(--bg);
+    outline-offset: 2px;
+  }
+  .optin-row button {
+    all: unset;
+    cursor: pointer;
+    padding: 9px 14px;
+    background: var(--bg);
+    color: var(--c);
+    font-size: 14px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  .optin-row button:hover {
+    color: var(--fg);
+  }
+  .optin-row button:focus-visible {
+    outline: 2px solid var(--bg);
+    outline-offset: 2px;
+  }
+  .optin-note {
+    margin: 8px 0 0;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+  }
+  .optin-note:empty {
+    display: none;
+  }
+  .follow {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgb(0 0 0 / 0.25);
+  }
+  .follow-label {
+    margin-right: auto;
+    font-size: 14px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  .follow-icon {
+    display: inline-flex;
+  }
+  .follow-icon :global(svg) {
+    width: 24px;
+    height: 24px;
+  }
+  a.follow-icon:hover {
+    color: var(--fg);
+  }
+  .soon-icon {
+    opacity: 0.4;
+    cursor: default;
+  }
+  @media (max-width: 720px) {
+    .panel-intro {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .panel-desc {
+    max-width: 34ch;
+    font-size: clamp(18px, 2.2vw, 32px);
+    font-weight: 600;
+    line-height: 1.25;
+    font-variation-settings: 'wdth' 100;
+  }
+
+  .items {
+    margin-top: clamp(28px, 5vw, 72px);
+    border-top: 2px solid var(--bg);
+  }
+  .items li {
+    border-bottom: 2px solid var(--bg);
+  }
+  .item {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    align-items: center;
+    gap: 8px 32px;
+    padding: 14px 0 16px;
+  }
+  .item-head {
+    flex-wrap: nowrap;
+    font-size: clamp(30px, 5vw, 80px);
+    font-weight: 800;
+    line-height: 0.95;
+    text-transform: uppercase;
+  }
+  .item-name {
+    min-width: 0;
+  }
+  .arr {
+    font-size: 0.6em;
+    margin-left: 0.15em;
+  }
+  .item-desc {
+    max-width: 52ch;
+    font-size: clamp(14px, 1.3vw, 19px);
+    font-weight: 500;
+    line-height: 1.4;
+    font-variation-settings: 'wdth' 100;
+  }
+  a.item:hover .item-name,
+  a.item:focus-visible .item-name {
+    color: var(--fg);
+  }
+  .soon {
+    opacity: 0.45;
+  }
+
+  .more {
+    display: inline-block;
+    margin-top: 28px;
+    font-size: clamp(18px, 2.4vw, 30px);
+    font-weight: 800;
+    text-transform: uppercase;
+    border-bottom: 2px solid currentColor;
+  }
+  .more:hover {
+    color: var(--fg);
+  }
+
+  @media (max-width: 720px) {
+    .item {
+      grid-template-columns: 1fr;
+    }
+    .item-desc {
+      padding-left: calc(1.7rem + 0.3em);
+    }
+  }
+</style>

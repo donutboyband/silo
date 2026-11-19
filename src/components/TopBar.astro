@@ -1,0 +1,369 @@
+---
+// Top right of every Silo page: Instagram and X dropdowns, Subscribe, Contact.
+import { label } from '../data/catalog';
+import { socialMenus } from '../data/social-menus';
+import SocialIcon from './SocialIcon.astro';
+---
+
+  <div class="top">
+    {
+      socialMenus.map((m) => (
+        <div class="menu">
+          <button
+            class="top-link icon-link"
+            type="button"
+            aria-expanded="false"
+            aria-controls={`${m.id}-panel`}
+            aria-label={m.title}
+          >
+            <SocialIcon kind={m.id} />
+          </button>
+          <div class="drop social-panel" id={`${m.id}-panel`} hidden>
+            <p class="sub-title">{m.title}</p>
+            <ul class="accounts">
+              {m.accounts.map((a) => (
+                <li data-pillar={a.key}>
+                  {a.url ? (
+                    <a class="acct" href={a.url} target="_blank" rel="noopener">
+                      <span class="acct-name">{a.name}</span>
+                      <span class="acct-handle">{a.handle ?? ''} ↗</span>
+                    </a>
+                  ) : (
+                    <span class="acct soon-acct">
+                      <span class="acct-name">{a.name}</span>
+                      <span class="acct-handle">Soon</span>
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      ))
+    }
+
+    <div class="menu">
+      <button
+        class="top-link"
+        type="button"
+        id="sub-toggle"
+        aria-expanded="false"
+        aria-controls="sub-panel"
+      >
+        Subscribe<span class="caret" aria-hidden="true">↓</span>
+      </button>
+
+      {/* Placeholder: no newsletter service yet, so this sends nothing. */}
+      <form class="drop sub-panel" id="sub-panel" hidden novalidate>
+        <p class="sub-title">Get updates by email</p>
+        <fieldset>
+          <legend class="sr">What would you like to hear about?</legend>
+          <label class="opt" data-pillar="all">
+            <input type="checkbox" name="list" value="all" data-all />
+            <span class="box" aria-hidden="true"></span>
+            All Silo updates
+          </label>
+          <label class="opt" data-pillar="recording">
+            <input type="checkbox" name="list" value="recording" data-one />
+            <span class="box" aria-hidden="true"></span>
+            Silo Recording
+          </label>
+          <label class="opt" data-pillar="decamp">
+            <input type="checkbox" name="list" value="decamp" data-one />
+            <span class="box" aria-hidden="true"></span>
+            DeCamp
+          </label>
+          <label class="opt" data-pillar="label">
+            <input type="checkbox" name="list" value="label" data-one />
+            <span class="box" aria-hidden="true"></span>
+            Software Label
+          </label>
+        </fieldset>
+        <label class="sr" for="sub-email">Email address</label>
+        <div class="sub-row">
+          <input
+            id="sub-email"
+            type="email"
+            name="email"
+            placeholder="you@email.com"
+            autocomplete="email"
+            required
+          />
+          <button type="submit">Sign up</button>
+        </div>
+        <p class="sub-note" role="status"></p>
+      </form>
+    </div>
+
+    <a class="top-link" href={`mailto:${label.contact}`}>Contact↗</a>
+  </div>
+
+<script>
+  // ---------- Top-right dropdowns (Instagram, X, Subscribe) ----------
+  // One open at a time; click outside or press Escape to close.
+  const toggles = [...document.querySelectorAll<HTMLElement>('.top [aria-controls]')];
+  const panelOf = (t: HTMLElement) => document.getElementById(t.getAttribute('aria-controls')!)!;
+
+  function setMenu(toggle: HTMLElement, open: boolean) {
+    toggles.forEach((t) => {
+      const show = t === toggle && open;
+      panelOf(t).hidden = !show;
+      t.setAttribute('aria-expanded', String(show));
+    });
+    if (open) panelOf(toggle).querySelector<HTMLElement>('input, a')?.focus();
+  }
+  toggles.forEach((t) => t.addEventListener('click', () => setMenu(t, panelOf(t).hidden)));
+  document.addEventListener('click', (e) => {
+    if (!(e.target as Element).closest('.menu')) toggles.forEach((t) => setMenu(t, false));
+  });
+  document.querySelectorAll<HTMLElement>('.top .drop').forEach((panel) =>
+    panel.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      const t = toggles.find((x) => panelOf(x) === panel)!;
+      setMenu(t, false);
+      t.focus();
+    }),
+  );
+
+  // ---------- Subscribe form ----------
+  const subPanel = document.getElementById('sub-panel') as HTMLFormElement;
+  const note = subPanel.querySelector<HTMLElement>('.sub-note')!;
+  const allBox = subPanel.querySelector<HTMLInputElement>('[data-all]')!;
+  const oneBoxes = [...subPanel.querySelectorAll<HTMLInputElement>('[data-one]')];
+
+  // "All Silo updates" ticks every list; unticking any one list unticks "All".
+  allBox.addEventListener('change', () => oneBoxes.forEach((b) => (b.checked = allBox.checked)));
+  oneBoxes.forEach((b) =>
+    b.addEventListener('change', () => (allBox.checked = oneBoxes.every((x) => x.checked))),
+  );
+
+  subPanel.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const email = subPanel.querySelector<HTMLInputElement>('#sub-email')!;
+    if (!oneBoxes.some((b) => b.checked)) {
+      note.textContent = 'Pick at least one thing to hear about.';
+    } else if (!email.checkValidity()) {
+      note.textContent = 'That email address doesn’t look right.';
+      email.focus();
+    } else {
+      // TODO: send to the newsletter service once one is chosen.
+      note.textContent = 'Thanks! Sign-ups aren’t live yet, so nothing was sent.';
+    }
+  });
+</script>
+
+<style>
+  /* ---------- top right: Subscribe + Contact ---------- */
+  .top {
+    position: fixed;
+    top: 12px;
+    right: 16px;
+    z-index: 4;
+    display: flex;
+    align-items: baseline;
+    gap: 0.9em;
+    padding: 0 0 4px 8px;
+    background: var(--bg);
+    font-size: clamp(18px, 2.4vw, 26px);
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  /* Phones: four items up here, so shrink them to clear the SILO title. */
+  @media (max-width: 520px) {
+    .top {
+      top: 18px;
+      gap: 0.8em;
+      font-size: 14px;
+    }
+  }
+  .top-link {
+    all: unset;
+    cursor: pointer;
+    color: var(--dim);
+  }
+  .top-link:hover,
+  .top-link[aria-expanded='true'] {
+    color: var(--fg);
+  }
+  .top-link:focus-visible {
+    outline: 2px solid var(--fg);
+    outline-offset: 2px;
+  }
+  .caret {
+    display: inline-block;
+    margin-left: 0.1em;
+    font-size: 0.7em;
+    transition: rotate 0.2s;
+  }
+  [aria-expanded='true'] .caret {
+    rotate: 180deg;
+  }
+
+  /* The dropdown hangs from the right edge of the whole top bar, so it stays
+     on screen on a phone. */
+  .drop {
+    position: absolute;
+    top: calc(100% + 12px);
+    right: 0;
+    width: min(360px, calc(100vw - 32px));
+    padding: 18px;
+    background: var(--bg);
+    border: 2px solid var(--fg);
+    box-shadow: 8px 8px 0 var(--fg);
+    color: var(--fg);
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: none;
+    font-variation-settings: 'wdth' 100;
+  }
+  .drop[hidden] {
+    display: none;
+  }
+
+  /* Instagram / X icons */
+  .icon-link {
+    display: inline-flex;
+    align-self: center;
+  }
+  .icon-link :global(svg) {
+    display: block;
+    width: 0.95em;
+    height: 0.95em;
+  }
+
+  /* account rows in the Instagram / X dropdowns */
+  .accounts {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .accounts li {
+    border-top: 1px solid var(--faint);
+  }
+  .acct {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 16px;
+    padding: 10px 0;
+    color: var(--c);
+  }
+  .acct-name {
+    font-size: 16px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  .acct-handle {
+    color: var(--dim);
+    font-weight: 500;
+  }
+  a.acct:hover .acct-name,
+  a.acct:focus-visible .acct-name {
+    color: var(--fg);
+  }
+  .soon-acct .acct-name {
+    opacity: 0.55;
+  }
+  .sub-title {
+    margin: 0 0 12px;
+    font-size: 16px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  .sub-panel fieldset {
+    margin: 0 0 16px;
+    padding: 0;
+    border: 0;
+  }
+  .opt {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    cursor: pointer;
+    color: var(--c);
+  }
+  .opt input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+  }
+  .box {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--c);
+    display: grid;
+    place-items: center;
+  }
+  .opt input:checked + .box {
+    background: var(--c);
+  }
+  .opt input:checked + .box::after {
+    content: '✓';
+    color: var(--bg);
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .opt input:focus-visible + .box {
+    outline: 2px solid var(--fg);
+    outline-offset: 2px;
+  }
+  .opt[data-pillar='all'] {
+    padding-bottom: 10px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--faint);
+  }
+
+  .sub-row {
+    display: flex;
+    gap: 8px;
+  }
+  .sub-row input {
+    flex: 1;
+    min-width: 0;
+    padding: 9px 10px;
+    border: 2px solid var(--fg);
+    background: var(--bg);
+    color: var(--fg);
+    font: inherit;
+    font-weight: 500;
+  }
+  .sub-row input::placeholder {
+    color: var(--dim);
+  }
+  .sub-row input:focus-visible {
+    outline: none;
+    border-color: #ff5b26;
+  }
+  .sub-row button {
+    all: unset;
+    cursor: pointer;
+    padding: 9px 14px;
+    background: var(--fg);
+    color: var(--bg);
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  .sub-row button:hover {
+    background: #ff5b26;
+  }
+  .sub-row button:focus-visible {
+    outline: 2px solid #ff5b26;
+    outline-offset: 2px;
+  }
+  .sub-note {
+    margin: 10px 0 0;
+    min-height: 1.3em;
+    color: var(--dim);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+  }
+  .sub-note:empty {
+    display: none;
+  }
+</style>

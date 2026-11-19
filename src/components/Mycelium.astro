@@ -1,0 +1,501 @@
+---
+// The Mycelium version's centrepiece: four nodes on a faint underground web.
+// Clicking a node grows its hyphae out to its projects; clicking a project
+// (or the node again) shows its card, which can open the full silo panel.
+//
+// Two drawings are built: a wide one and a tall one for phones. CSS shows one.
+// The lines are drawn as roots (see src/lib/mycelium.ts).
+import { pillars } from '../data/catalog';
+import { grow, type Network } from '../lib/mycelium';
+
+const drawings: { id: string; net: Network }[] = [
+  {
+    id: 'wide',
+    net: grow(pillars, {
+      w: 1000,
+      h: 620,
+      at: [
+        { x: 250, y: 185 },
+        { x: 745, y: 165 },
+        { x: 280, y: 450 },
+        { x: 735, y: 460 },
+      ],
+      reach: [150, 205],
+      seed: 7,
+    }),
+  },
+  {
+    id: 'tall',
+    net: grow(pillars, {
+      w: 600,
+      h: 1180,
+      at: [
+        { x: 200, y: 200 },
+        { x: 400, y: 480 },
+        { x: 200, y: 760 },
+        { x: 400, y: 1010 },
+      ],
+      reach: [115, 150],
+      seed: 11,
+      charW: 13.2,
+      labels: 'stack',
+    }),
+  },
+];
+---
+
+<div class="myc" data-myc>
+  {
+    drawings.map(({ id, net }) => (
+      <svg
+        class:list={['net', id]}
+        viewBox={`0 0 ${net.w} ${net.h}`}
+        role="group"
+        aria-label="Silo as a mycelium network: four nodes. Choose one to grow its threads."
+      >
+        <g class="web" aria-hidden="true">
+          {net.web.map((p) => (
+            <path d={p.d} stroke-width={p.w} stroke-opacity={p.o} pathLength="1" />
+          ))}
+        </g>
+
+        {net.nodes.map((n) => (
+          <g class="colony" data-pillar={n.key} data-node={n.key}>
+            <g class="hyphae" aria-hidden="true">
+              {n.lines.map((h) => (
+                <path d={h.d} stroke-width={h.w} pathLength="1" data-delay={h.delay} data-dur={h.dur} />
+              ))}
+            </g>
+
+            <g class="tips">
+              {n.tips.map((t) => (
+                <g
+                  class:list={['tip', { soon: t.soon }]}
+                  transform={`translate(${t.x} ${t.y})`}
+                  role="button"
+                  tabindex="0"
+                  aria-label={`${n.name}: ${t.name}${t.soon ? ', coming soon' : ''}`}
+                  data-delay={t.delay}
+                  data-name={t.name}
+                  data-desc={t.desc}
+                  data-url={t.url ?? ''}
+                  data-soon={t.soon ? '1' : ''}
+                >
+                  <circle class="tip-hit" r="16" />
+                  <circle class="tip-dot" r="5" />
+                  <text class="tip-label" x={t.lx} y={t.ly} text-anchor={t.anchor}>
+                    {t.name}
+                  </text>
+                </g>
+              ))}
+            </g>
+
+            <g
+              class="node"
+              transform={`translate(${n.x} ${n.y})`}
+              role="button"
+              tabindex="0"
+              aria-expanded="false"
+              aria-label={`${n.name}: grow its threads`}
+              data-name={n.name}
+              data-desc={n.desc}
+            >
+              <circle class="node-hit" r="34" />
+              <circle class="node-halo" r="24" />
+              <circle class="node-core" r="13" />
+              <text class="node-label" y={n.labelBelow ? 52 : -36} text-anchor="middle">
+                {n.name}
+              </text>
+            </g>
+          </g>
+        ))}
+      </svg>
+    ))
+  }
+
+  <p class="hint">Click a node to grow it. Click again to fold it back.</p>
+
+
+  {/* The card for whatever was picked. Text is filled in by the script. */}
+  <aside class="card" data-pillar="recording" hidden aria-live="polite">
+    <button class="card-x" type="button" aria-label="Close card">✕</button>
+    <p class="card-silo"></p>
+    <h2 class="card-name"></h2>
+    <p class="card-desc"></p>
+    <div class="card-links">
+      <a class="card-link" href="#" target="_blank" rel="noopener" hidden>Visit ↗</a>
+      <button class="card-open" type="button" data-open="silo-recording" aria-haspopup="dialog" aria-expanded="false">
+        Open silo ↗
+      </button>
+    </div>
+  </aside>
+</div>
+
+<script>
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)');
+  const root = document.querySelector<HTMLElement>('[data-myc]')!;
+  const card = root.querySelector<HTMLElement>('.card')!;
+  const q = <T extends Element>(s: string) => card.querySelector<T>(s)!;
+
+  // The faint web draws itself in once, when the page loads.
+  if (!reduce.matches) {
+    root.querySelectorAll<SVGPathElement>('.web path').forEach((p, i) => {
+      p.animate(
+        { strokeDashoffset: [1, 0] },
+        { duration: 1800 + (i % 7) * 260, delay: (i % 11) * 90, easing: 'cubic-bezier(0.3, 0.6, 0.3, 1)' },
+      );
+    });
+  }
+
+  // Grow or fold a node's colony. Both drawings (wide and tall) stay in step.
+  function setColony(key: string, open: boolean) {
+    root.querySelectorAll<SVGGElement>(`.colony[data-node="${key}"]`).forEach((col) => {
+      col.classList.toggle('open', open);
+      col.querySelector('.node')!.setAttribute('aria-expanded', String(open));
+      if (reduce.matches) return;
+      const visible = col.ownerSVGElement!.checkVisibility();
+      if (!visible) return;
+      col.querySelectorAll<SVGPathElement>('.hyphae path').forEach((p) => {
+        const delay = Number(p.dataset.delay);
+        const dur = Number(p.dataset.dur);
+        p.animate(
+          { strokeDashoffset: open ? [1, 0] : [0, 1] },
+          open
+            ? { duration: dur, delay, easing: 'cubic-bezier(0.25, 0.6, 0.3, 1)', fill: 'backwards' }
+            : { duration: 380, easing: 'ease-in' },
+        );
+      });
+      col.querySelectorAll<SVGGElement>('.tip').forEach((t) => {
+        t.animate(
+          { opacity: open ? [0, 1] : [1, 0] },
+          open ? { duration: 300, delay: Number(t.dataset.delay), fill: 'backwards' } : { duration: 200 },
+        );
+      });
+    });
+  }
+
+  // `silo` is the line above the title; `siloName` names the Open button.
+  function showCard(key: string, silo: string, siloName: string, title: string, desc: string, url = '', soon = false) {
+    card.setAttribute('data-pillar', key);
+    q<HTMLElement>('.card-silo').textContent = silo;
+    q<HTMLElement>('.card-name').textContent = title;
+    q<HTMLElement>('.card-desc').textContent = soon ? `Soon. ${desc}` : desc;
+    const link = q<HTMLAnchorElement>('.card-link');
+    link.hidden = !url || soon;
+    if (url) {
+      link.href = url;
+      const external = url.startsWith('http');
+      link.target = external ? '_blank' : '';
+      link.rel = external ? 'noopener' : '';
+    }
+    const openBtn = q<HTMLButtonElement>('.card-open');
+    openBtn.dataset.open = `silo-${key}`;
+    openBtn.textContent = `Open ${siloName} ↗`;
+    // Dock the card on the side away from the node, so it never hides it.
+    const nodes = [...root.querySelectorAll<SVGGElement>(`.colony[data-node="${key}"] .node`)];
+    const shown = nodes.find((n) => n.ownerSVGElement!.checkVisibility()) ?? nodes[0];
+    const r = shown.getBoundingClientRect();
+    card.classList.toggle('left', r.left + r.width / 2 > innerWidth / 2);
+    card.hidden = false;
+  }
+
+  const activate = (el: Element, fn: () => void) => {
+    el.addEventListener('click', fn);
+    el.addEventListener('keydown', (e) => {
+      const k = (e as KeyboardEvent).key;
+      if (k === 'Enter' || k === ' ') {
+        e.preventDefault();
+        fn();
+      }
+    });
+  };
+
+  root.querySelectorAll<SVGGElement>('.node').forEach((node) => {
+    const key = node.closest<SVGGElement>('.colony')!.dataset.node!;
+    activate(node, () => {
+      const open = node.getAttribute('aria-expanded') !== 'true';
+      setColony(key, open);
+      if (open) showCard(key, '', node.dataset.name!, node.dataset.name!, node.dataset.desc!);
+      else if (card.dataset.pillar === key) card.hidden = true;
+    });
+  });
+
+  root.querySelectorAll<SVGGElement>('.tip').forEach((tip) => {
+    const col = tip.closest<SVGGElement>('.colony')!;
+    const node = col.querySelector<SVGGElement>('.node')!;
+    activate(tip, () =>
+      showCard(
+        col.dataset.node!,
+        node.dataset.name!,
+        node.dataset.name!,
+        tip.dataset.name!,
+        tip.dataset.desc!,
+        tip.dataset.url,
+        tip.dataset.soon === '1',
+      ),
+    );
+  });
+
+  q('.card-x').addEventListener('click', () => (card.hidden = true));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !document.querySelector('dialog[open]')) card.hidden = true;
+  });
+</script>
+
+<style>
+  .myc {
+    position: relative;
+    margin-top: clamp(16px, 3cqw, 40px);
+    text-transform: none;
+    letter-spacing: 0;
+    line-height: 1.3;
+  }
+
+  .net {
+    display: block;
+    width: 100%;
+    max-width: 1200px;
+    height: auto;
+    margin: 0 auto;
+    overflow: visible;
+  }
+  /* the tall drawing is for phones */
+  .tall {
+    display: none;
+  }
+  @media (max-width: 640px) {
+    .wide {
+      display: none;
+    }
+    .tall {
+      display: block;
+    }
+  }
+
+  path {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 1 1;
+  }
+
+  /* the underground: always there, faint */
+  .web path {
+    stroke: #8c8c8c;
+    stroke-dashoffset: 0;
+  }
+
+  /* a colony's own threads, hidden until it opens */
+  .hyphae path {
+    stroke: var(--c);
+    stroke-dashoffset: 1;
+  }
+  .open .hyphae path {
+    stroke-dashoffset: 0;
+  }
+
+  /* project tips */
+  .tip {
+    cursor: pointer;
+    outline: none;
+    visibility: hidden;
+    opacity: 0;
+  }
+  .open .tip {
+    visibility: visible;
+    opacity: 1;
+  }
+  .tip-hit {
+    fill: transparent;
+  }
+  .tip-dot {
+    fill: var(--c);
+    stroke: var(--bg);
+    stroke-width: 2;
+    transition: r 0.15s;
+  }
+  .tip.soon .tip-dot {
+    fill: var(--bg);
+    stroke: var(--c);
+    stroke-width: 1.6;
+  }
+  .tip-label {
+    font-family: var(--f-mono);
+    font-size: 15px;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-variation-settings: 'wdth' 85;
+    fill: var(--c);
+    paint-order: stroke;
+    stroke: var(--bg);
+    stroke-width: 4px;
+  }
+  .tip.soon .tip-label {
+    opacity: 0.6;
+  }
+  .tip:hover .tip-dot,
+  .tip:focus-visible .tip-dot {
+    r: 8;
+  }
+  .tip:hover .tip-label,
+  .tip:focus-visible .tip-label {
+    fill: var(--fg);
+    opacity: 1;
+  }
+
+  /* the four nodes */
+  .node {
+    cursor: pointer;
+    outline: none;
+  }
+  .node-hit {
+    fill: transparent;
+  }
+  .node-core {
+    fill: var(--c);
+  }
+  .node-halo {
+    fill: none;
+    stroke: var(--c);
+    stroke-width: 1.2;
+    stroke-opacity: 0.55;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: breathe 3.2s ease-in-out infinite;
+  }
+  .node:hover .node-halo,
+  .node:focus-visible .node-halo,
+  .open .node-halo {
+    stroke-opacity: 1;
+    stroke-width: 2;
+  }
+  .node:focus-visible .node-core {
+    stroke: var(--fg);
+    stroke-width: 3;
+  }
+  .node-label {
+    font-family: var(--f-mono);
+    font-size: 21px;
+    font-weight: 800;
+    text-transform: uppercase;
+    font-variation-settings: 'wdth' 85;
+    fill: var(--c);
+    paint-order: stroke;
+    stroke: var(--bg);
+    stroke-width: 5px;
+  }
+  .node:hover .node-label,
+  .node:focus-visible .node-label {
+    fill: var(--fg);
+  }
+  @keyframes breathe {
+    50% {
+      transform: scale(1.18);
+    }
+  }
+
+  /* bigger type on the tall (phone) drawing, which is shown smaller */
+  .tall .tip-label {
+    font-size: 21px;
+  }
+  .tall .node-label {
+    font-size: 27px;
+  }
+
+  .hint {
+    margin: 12px 0 0;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--dim);
+    font-variation-settings: 'wdth' 100;
+  }
+
+  /* ---------- the card ---------- */
+  .card {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 3;
+    width: min(380px, calc(100vw - 32px));
+    padding: 16px 18px 18px;
+    background: var(--c);
+    color: var(--bg);
+    box-shadow: 8px 8px 0 var(--fg);
+    font-variation-settings: 'wdth' 100;
+  }
+  .card.left {
+    right: auto;
+    left: 16px;
+  }
+  .card[hidden] {
+    display: none;
+  }
+  .card-x {
+    all: unset;
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 800;
+  }
+  .card-x:focus-visible,
+  .card-open:focus-visible,
+  .card-link:focus-visible {
+    outline: 2px solid var(--bg);
+    outline-offset: 2px;
+  }
+  .card-silo:empty {
+    display: none;
+  }
+  .card-silo {
+    margin: 0 28px 6px 0;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    opacity: 0.7;
+  }
+  .card-name {
+    margin: 0 0 10px;
+    font-size: clamp(24px, 2.6vw, 34px);
+    font-weight: 800;
+    line-height: 0.95;
+    text-transform: uppercase;
+    font-variation-settings: 'wdth' 75;
+  }
+  .card-desc {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.45;
+  }
+  .card-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 18px;
+    margin-top: 14px;
+  }
+  .card-link,
+  .card-open {
+    all: unset;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 800;
+    text-transform: uppercase;
+    border-bottom: 2px solid currentColor;
+  }
+  .card-link[hidden] {
+    display: none;
+  }
+  .card-link:hover,
+  .card-open:hover {
+    color: var(--fg);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .node-halo {
+      animation: none;
+    }
+  }
+</style>
