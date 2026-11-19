@@ -14,11 +14,16 @@ interface Props {
   idPrefix: string;
   /** show the #01-style numbers */
   numbers?: boolean;
+  /** a narrow, one-column layout that fits beside a drawing */
+  compact?: boolean;
+  /** places get a map; false lists them instead (when a map is shown elsewhere) */
+  map?: boolean;
 }
-const { p, i, idPrefix, numbers = true } = Astro.props;
+const { p, i, idPrefix, numbers = true, compact = false, map = true } = Astro.props;
 const isExternal = (url?: string) => !!url?.startsWith('http');
 ---
 
+<div class:list={['silo-detail', { compact }]}>
 <h2 class="panel-title row" id={`${idPrefix}-${p.key}-title`}>
   {numbers && (<span class="tag"><i>#</i>{String(i + 1).padStart(2, '0')}</span>)}
   <span class="name">{p.name}</span>
@@ -67,7 +72,7 @@ const isExternal = (url?: string) => !!url?.startsWith('http');
 </div>
 
 {/* Silos whose items are places (DeCamp) get a map; the rest a list. */}
-{p.items.some((it) => it.at) ? (
+{map && p.items.some((it) => it.at) ? (
   <PlaceMap id={`${idPrefix}-${p.key}`} items={p.items} />
 ) : (
 <ul class:list={['items', { plain: !numbers }]}>
@@ -102,6 +107,7 @@ const isExternal = (url?: string) => !!url?.startsWith('http');
   </a>
 )}
 
+</div>
 <script>
   // ---------- Per-silo sign-up forms (inside each open silo) ----------
   document.querySelectorAll<HTMLFormElement>('.optin-form').forEach((form) => {
@@ -317,5 +323,46 @@ const isExternal = (url?: string) => !!url?.startsWith('http');
     .plain .item-desc {
       padding-left: 0;
     }
+  }
+
+  /* ---------- compact: one column, beside a drawing ---------- */
+  .compact .panel-title {
+    font-size: clamp(30px, 3.6vw, 60px);
+  }
+  .compact .panel-intro {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    margin-top: 12px;
+  }
+  .compact .panel-desc {
+    max-width: none;
+    font-size: clamp(15px, 1.25vw, 19px);
+  }
+  .compact .optin {
+    padding: 12px;
+  }
+  .compact .follow {
+    margin-top: 10px;
+    padding-top: 8px;
+  }
+  .compact .items {
+    margin-top: 16px;
+  }
+  .compact .item {
+    grid-template-columns: 1fr;
+    gap: 4px;
+    padding: 9px 0 10px;
+  }
+  .compact .item-head {
+    font-size: clamp(20px, 2vw, 30px);
+  }
+  .compact .item-desc {
+    max-width: none;
+    padding-left: 0;
+    font-size: 13px;
+  }
+  .compact .more {
+    margin-top: 14px;
+    font-size: 16px;
   }
 </style>

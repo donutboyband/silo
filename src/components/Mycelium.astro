@@ -1,7 +1,8 @@
 ---
 // The Mycelium version's centrepiece: four nodes on a faint underground web.
 // Clicking a node grows its roots out to its projects and
-// opens that silo's page in the bottom half, under the drawing.
+// brings it into focus: the view zooms to that colony and the silo's page
+// opens beside it. Clicking the node again (or Back / Escape) zooms out.
 //
 // Two drawings are built: a wide one and a tall one for phones. CSS shows one.
 // The lines are drawn as roots (see src/lib/mycelium.ts).
@@ -181,15 +182,15 @@ const drawings: { id: string; net: Network; ring: number }[] = [
     <span class="enter-label">Enter ↘</span>
   </button>
 
-  {/* Each silo's page, opened under the drawing when its node is clicked. */}
+  {/* Each silo's page, opened beside its colony when it is in focus. */}
   {
     pillars.map((p, i) => (
-      <section class="detail" id={`detail-${p.key}`} data-pillar={p.key} hidden aria-labelledby={`inline-${p.key}-title`}>
-        <button class="detail-close" type="button" data-detail-close>
-          Close ✕
+      <aside class="focus" id={`focus-${p.key}`} data-pillar={p.key} hidden aria-labelledby={`focus-${p.key}-title`}>
+        <button class="focus-back" type="button" data-focus-back>
+          ← All silos
         </button>
-        <SiloDetail p={p} i={i} idPrefix="inline" numbers={false} />
-      </section>
+        <SiloDetail p={p} i={i} idPrefix="focus" numbers={false} compact map={false} />
+      </aside>
     ))
   }
 </div>
@@ -198,7 +199,7 @@ const drawings: { id: string; net: Network; ring: number }[] = [
   const reduce = matchMedia('(prefers-reduced-motion: reduce)');
   const root = document.querySelector<HTMLElement>('[data-myc]')!;
   const phone = matchMedia('(max-width: 640px)');
-  let current = ''; // the silo whose page is open below, if any
+  let current = ''; // the silo in focus, if any
 
   // The faint web draws itself in, once you're in.
   const drawWeb = (lag = 0) => {
@@ -286,43 +287,101 @@ const drawings: { id: string; net: Network; ring: number }[] = [
     });
   }
 
-  // Open a silo's page under the drawing. A project name, if given, is
-  // highlighted there (on DeCamp's map, its city is picked).
-  function showDetail(key: string, project?: string) {
-    const sec = root.querySelector<HTMLElement>(`#detail-${key}`)!;
+  // ---------- focus: zoom to one colony, its page beside it ----------
+  const nets = [...root.querySelectorAll<SVGSVGElement>('.net')];
+  const fullBox = new Map(nets.map((svg) => [svg, svg.getAttribute('viewBox')!.split(' ').map(Number)]));
+  const shownNet = () => nets.find((n) => n.checkVisibility()) ?? nets[0];
+  const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+
+  // The viewBox is an attribute, so it's eased frame by frame (no inline styles).
+  function tweenBox(svg: SVGSVGElement, to: number[], dur = 900) {
+    const from = svg.getAttribute('viewBox')!.split(' ').map(Number);
+    if (reduce.matches) return svg.setAttribute('viewBox', to.join(' '));
+    const t0 = performance.now();
+    const step = (now: number) => {
+      const t = Math.min(1, (now - t0) / dur);
+      const e = easeInOut(t);
+      svg.setAttribute('viewBox', from.map((v, i) => (v + (to[i] - v) * e).toFixed(2)).join(' '));
+      if (t < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
+  // Fade everything but the chosen colony (or bring it all back).
+  function fadeOthers(svg: SVGSVGElement, key: string | null) {
+    svg.querySelectorAll<SVGGElement>('.web, .colony').forEach((g) => {
+      const dim = key !== null && !(g.classList.contains('colony') && g.dataset.node === key);
+      g.getAnimations().forEach((a) => a.cancel());
+      if (dim) g.animate({ opacity: [1, 0.07] }, { duration: reduce.matches ? 0 : 600, fill: 'forwards' });
+      g.classList.toggle('dimmed', dim);
+    });
+  }
+
+  function focusOn(key: string, project?: string) {
+    const svg = shownNet();
+    const panel = root.querySelector<HTMLElement>(`#focus-${key}`)!;
     const switching = current !== key;
-    root.querySelectorAll<HTMLElement>('.detail').forEach((d) => (d.hidden = d !== sec));
-    root.classList.add('has-detail');
+    if (current && switching) setColony(current, false);
     current = key;
+    root.classList.add('focused');
+    root.querySelectorAll<HTMLElement>('.focus').forEach((f) => (f.hidden = f !== panel));
+    if (!root.querySelector(`.colony[data-node="${key}"].open`)) setColony(key, true);
+    fadeOthers(svg, key);
+
+    // Zoom so the colony fills the part of the drawing the page doesn't cover.
+    const [, , W0, H0] = fullBox.get(svg)!;
+    const ratio = W0 / H0;
+    const box = svg.querySelector<SVGGElement>(`.colony[data-node="${key}"]`)!.getBBox();
+    const r = svg.getBoundingClientRect();
+    const share = phone.matches ? 1 : Math.min(1, Math.max(0.3, (panel.getBoundingClientRect().left - r.left) / r.width));
+    const pad = 28;
+    const vw = Math.max((box.width + 2 * pad) / share, (box.height + 2 * pad) * ratio, W0 * 0.42);
+    const vh = vw / ratio;
+    tweenBox(svg, [box.x + box.width / 2 - (vw * share) / 2, box.y + box.height / 2 - vh / 2, vw, vh]);
+
+    // The page grows out of the node, like the silos on the Silo version.
     if (switching && !reduce.matches) {
-      sec.animate(
-        { clipPath: ['inset(0 0 100% 0)', 'inset(0 0 0 0)'] },
-        { duration: 650, easing: 'cubic-bezier(0.76, 0, 0.24, 1)' },
+      const node = svg.querySelector(`.colony[data-node="${key}"] .node`)!.getBoundingClientRect();
+      const pr = panel.getBoundingClientRect();
+      const x = node.left + node.width / 2 - pr.left;
+      const y = node.top + node.height / 2 - pr.top;
+      panel.animate(
+        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${Math.hypot(pr.width, pr.height) * 1.2}px at ${x}px ${y}px)`] },
+        { duration: 800, delay: 150, easing: 'cubic-bezier(0.76, 0, 0.24, 1)', fill: 'backwards' },
       );
     }
+
     if (project) {
-      const dot = [...sec.querySelectorAll<SVGGElement>('.dot')].find((d) => d.getAttribute('aria-label')?.includes(project));
-      if (dot) dot.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-      const row = [...sec.querySelectorAll<HTMLElement>('.item')].find((r) =>
-        r.querySelector('.item-name')?.textContent?.trim().startsWith(project),
+      const row = [...panel.querySelectorAll<HTMLElement>('.item')].find((it) =>
+        it.querySelector('.item-name')?.textContent?.trim().startsWith(project),
       );
-      const target = dot ?? row;
       if (row) {
         row.classList.remove('flash');
         void row.offsetWidth;
         row.classList.add('flash');
+        row.scrollIntoView({ behavior: reduce.matches ? 'auto' : 'smooth', block: 'nearest' });
       }
-      target?.scrollIntoView({ behavior: reduce.matches ? 'auto' : 'smooth', block: 'center' });
-    } else if (phone.matches) {
-      // on a phone the page is below the drawing: go to it once the roots have grown
-      setTimeout(() => sec.scrollIntoView({ behavior: reduce.matches ? 'auto' : 'smooth' }), reduce.matches ? 0 : 1100);
+    }
+    if (phone.matches) {
+      setTimeout(() => panel.scrollIntoView({ behavior: reduce.matches ? 'auto' : 'smooth' }), reduce.matches ? 0 : 1000);
     }
   }
 
-  function hideDetail() {
-    root.querySelectorAll<HTMLElement>('.detail').forEach((d) => (d.hidden = true));
-    root.classList.remove('has-detail');
+  function unfocus() {
+    const key = current;
+    if (!key) return;
     current = '';
+    const svg = shownNet();
+    const panel = root.querySelector<HTMLElement>(`#focus-${key}`)!;
+    root.classList.remove('focused');
+    setColony(key, false);
+    fadeOthers(svg, null);
+    tweenBox(svg, fullBox.get(svg)!);
+    nets.filter((n) => n !== svg).forEach((n) => n.setAttribute('viewBox', fullBox.get(n)!.join(' ')));
+    const hide = () => (panel.hidden = true);
+    if (reduce.matches) hide();
+    else panel.animate({ opacity: [1, 0] }, { duration: 250 }).finished.then(hide);
+    svg.querySelector<SVGGElement>(`.colony[data-node="${key}"] .node`)?.focus({ preventScroll: true });
   }
 
   const activate = (el: Element, fn: () => void) => {
@@ -338,28 +397,19 @@ const drawings: { id: string; net: Network; ring: number }[] = [
 
   root.querySelectorAll<SVGGElement>('.node').forEach((node) => {
     const key = node.closest<SVGGElement>('.colony')!.dataset.node!;
-    activate(node, () => {
-      const open = node.getAttribute('aria-expanded') !== 'true';
-      setColony(key, open);
-      if (open) showDetail(key);
-      else if (current === key) hideDetail();
-    });
+    // in focus: click to back out; otherwise: grow it and bring it into focus
+    activate(node, () => (current === key ? unfocus() : focusOn(key)));
   });
 
   root.querySelectorAll<SVGGElement>('.tip').forEach((tip) => {
     const col = tip.closest<SVGGElement>('.colony')!;
-    activate(tip, () => showDetail(col.dataset.node!, tip.dataset.name!));
+    activate(tip, () => focusOn(col.dataset.node!, tip.dataset.name!));
   });
 
-  // Close folds that silo's roots too.
-  root.querySelectorAll<HTMLElement>('[data-detail-close]').forEach((b) =>
-    b.addEventListener('click', () => {
-      const key = current;
-      hideDetail();
-      if (key) setColony(key, false);
-      root.querySelector<SVGGElement>(`.net:not([hidden]) .colony[data-node="${key}"] .node`)?.focus();
-    }),
-  );
+  root.querySelectorAll<HTMLElement>('[data-focus-back]').forEach((b) => b.addEventListener('click', unfocus));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && current && !document.querySelector('dialog[open]')) unfocus();
+  });
 </script>
 
 <style>
@@ -616,7 +666,6 @@ const drawings: { id: string; net: Network; ring: number }[] = [
     font-size: 27px;
   }
 
-  /* With a silo open below, the drawing shrinks so both fit on screen. */
   /* Fit the whole network on screen under the title and banner, however short
      the window. The title grows with the window's width (about 1.14 x its
      font size, which is (100vw - 60px) / 11), plus ~88px of banner and
@@ -625,18 +674,21 @@ const drawings: { id: string; net: Network; ring: number }[] = [
     max-width: min(1200px, calc((100svh - 88px - (100vw - 60px) * 0.1036) * 1.613));
     transition: max-width 0.6s cubic-bezier(0.76, 0, 0.24, 1);
   }
-  .myc.has-detail .wide {
-    max-width: min(100%, 84vh);
-  }
 
-  /* ---------- a silo's page, under the drawing ---------- */
-  .detail {
-    position: relative;
-    margin: clamp(16px, 2.5vw, 32px) -16px -48px;
-    padding: 12px 16px 64px;
-    min-height: 60vh;
-    /* when scrolled to, stop below the fixed top bar */
-    scroll-margin-top: 56px;
+  /* ---------- focus: a silo's page beside its colony ---------- */
+  .dimmed {
+    pointer-events: none;
+  }
+  .focus {
+    position: absolute;
+    top: 0;
+    right: -16px;
+    bottom: 0;
+    z-index: 2;
+    width: min(620px, 50%);
+    padding: 14px 18px 24px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     background: var(--c);
     color: var(--bg);
     /* undo the big title type this sits inside */
@@ -646,27 +698,38 @@ const drawings: { id: string; net: Network; ring: number }[] = [
     letter-spacing: normal;
     text-transform: none;
   }
-  .detail[hidden] {
+  .focus[hidden] {
     display: none;
   }
-  .detail-close {
+  .focus-back {
     all: unset;
-    float: right;
-    margin-left: 16px;
+    display: inline-block;
+    margin-bottom: 10px;
     cursor: pointer;
-    font-size: clamp(18px, 2.4vw, 26px);
+    font-size: 14px;
     font-weight: 800;
     text-transform: uppercase;
+    font-variation-settings: 'wdth' 100;
   }
-  .detail-close:hover {
+  .focus-back:hover {
     color: var(--fg);
   }
-  .detail-close:focus-visible {
+  .focus-back:focus-visible {
     outline: 2px solid var(--bg);
     outline-offset: 2px;
   }
+  /* phones: no room beside it, so the page sits under the zoomed colony */
+  @media (max-width: 640px) {
+    .focus {
+      position: relative;
+      right: auto;
+      width: auto;
+      margin: 16px -16px -48px;
+      scroll-margin-top: 56px;
+    }
+  }
   /* a project picked on the drawing flashes in the list */
-  .detail :global(.item.flash) {
+  .focus :global(.item.flash) {
     animation: flash 1.6s ease-out;
   }
   @keyframes flash {
