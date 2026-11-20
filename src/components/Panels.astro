@@ -1,15 +1,8 @@
 ---
-// The full-screen panels: About, and one per silo. Each opens out of the
-// button that names it with data-open="<panel id>" (a silo circle, a node,
-// the SILO title), growing from that button as a circle.
+// The full-screen About panel. It opens out of the button that names it with
+// data-open="<panel id>" (the SILO title), growing from that button as a circle.
+// The silos themselves open inside the mycelium drawing (Mycelium.astro).
 import { pillars, label, about } from '../data/catalog';
-import SiloDetail from './SiloDetail.astro';
-
-interface Props {
-  /** false: only the About panel (the page shows its silos another way) */
-  silos?: boolean;
-}
-const { silos = true } = Astro.props;
 ---
 
   {/* ---------- About: opens from the SILO title ---------- */}
@@ -61,33 +54,19 @@ const { silos = true } = Astro.props;
     </div>
   </dialog>
 
-  {
-    silos && pillars.map((p, i) => (
-      <dialog class="panel" id={`silo-${p.key}`} data-pillar={p.key} aria-labelledby={`silo-${p.key}-title`}>
-        <div class="inner">
-          <button class="close" type="button" data-close>
-            Close ✕
-          </button>
-
-          <SiloDetail p={p} i={i} idPrefix="silo" />
-        </div>
-      </dialog>
-    ))
-  }
-
 <script>
-  // Each silo opens as a circle that grows out of the one you clicked until it
+  // A panel opens as a circle that grows out of the button you clicked until it
   // fills the screen, then closes back into it. Everything is set through the
   // Web Animations API, so the CSP never has to allow inline styles.
   const reduce = matchMedia('(prefers-reduced-motion: reduce)');
   const ease = 'cubic-bezier(0.76, 0, 0.24, 1)';
 
-  // The button a panel opens from: a silo circle, or the SILO title for About.
+  // The button a panel opens from: the SILO title for About.
   const circleBtn = (id: string) => document.querySelector<HTMLElement>(`[data-open="${id}"]`)!;
 
   function circles(btn: HTMLElement) {
-    // Grow from the silo's circle, or from the middle of the title.
-    const r = (btn.querySelector('.disc, .name') ?? btn).getBoundingClientRect();
+    // Grow from the middle of the title.
+    const r = (btn.querySelector('.name') ?? btn).getBoundingClientRect();
     const x = r.left + r.width / 2;
     const y = r.top + r.height / 2;
     const far = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
@@ -135,11 +114,6 @@ const { silos = true } = Astro.props;
 
   document.querySelectorAll<HTMLElement>('[data-open]').forEach((btn) => {
     btn.addEventListener('click', () => open(btn));
-  });
-
-  // Clicking a name under the stack opens its silo out of the circle.
-  document.querySelectorAll<HTMLElement>('[data-open-via]').forEach((btn) => {
-    btn.addEventListener('click', () => open(circleBtn(btn.dataset.openVia!)));
   });
 
   document.querySelectorAll<HTMLDialogElement>('dialog.panel').forEach((panel) => {
@@ -269,7 +243,7 @@ const { silos = true } = Astro.props;
     }
   }
 
-  /* ---------- an open silo ---------- */
+  /* ---------- the panel shell ---------- */
   .panel {
     position: fixed;
     inset: 0;
