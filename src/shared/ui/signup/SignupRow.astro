@@ -1,0 +1,108 @@
+---
+// An email box, its Sign up button and a status line, inside a parent <form>
+// (wire the form with wireSignup from ./signup). Placeholder: sends nothing yet.
+// tone 'dark': on black (the Subscribe menu). tone 'on-colour': on a silo's
+// colour (its page), scaled by --f when the page sets it.
+interface Props {
+  id: string;
+  tone: 'dark' | 'on-colour';
+}
+const { id, tone } = Astro.props;
+---
+
+<label class="sr" for={id}>Email address</label>
+<div class:list={['row', tone]}>
+  <input {id} type="email" name="email" placeholder="you@email.com" autocomplete="email" required />
+  <button type="submit">Sign up</button>
+</div>
+<p class:list={['signup-note', tone]} role="status"></p>
+
+<style>
+  .row {
+    display: flex;
+    gap: 8px;
+  }
+  input {
+    flex: 1;
+    min-width: 0;
+    padding: 9px 10px;
+    border: 2px solid;
+    font: inherit;
+    font-weight: 500;
+  }
+  button {
+    all: unset;
+    cursor: pointer;
+    padding: 9px 14px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  .signup-note {
+    margin: 10px 0 0;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+  }
+  .signup-note:empty {
+    display: none;
+  }
+
+  /* on black: white box, white button that turns orange */
+  .dark input {
+    border-color: var(--fg);
+    background: var(--bg);
+    color: var(--fg);
+  }
+  .dark input::placeholder {
+    color: var(--dim);
+  }
+  .dark input:focus-visible {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .dark button {
+    background: var(--fg);
+    color: var(--bg);
+  }
+  .dark button:hover {
+    background: var(--accent);
+  }
+  .dark button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .signup-note.dark {
+    min-height: 1.3em;
+    color: var(--dim);
+  }
+
+  /* on a silo's colour: black box and button */
+  .on-colour input,
+  .on-colour button {
+    font-size: calc(14px * var(--f, 1));
+    padding-block: calc(9px * var(--f, 1));
+  }
+  .on-colour input {
+    border-color: var(--bg);
+    background: transparent;
+    color: var(--bg);
+  }
+  .on-colour input::placeholder {
+    color: rgb(0 0 0 / 0.5);
+  }
+  .on-colour button {
+    background: var(--bg);
+    color: var(--c);
+  }
+  .on-colour button:hover {
+    color: var(--fg);
+  }
+  .on-colour input:focus-visible,
+  .on-colour button:focus-visible {
+    outline: 2px solid var(--bg);
+    outline-offset: 2px;
+  }
+  .signup-note.on-colour {
+    margin-top: 8px;
+  }
+</style>

@@ -1,12 +1,13 @@
 ---
-import Base from '../layouts/Base.astro';
+import Base from '@shared/layouts/Base.astro';
+import { label } from '@shared/content/catalog';
 ---
 
 <Base>
   <main>
     <p class="code">404</p>
     <p>Not in the silo.</p>
-    <a href="/">Back to Silo ↗</a>
+    <a href="/">Back to {label.name} ↗</a>
   </main>
 </Base>
 

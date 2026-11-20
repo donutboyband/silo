@@ -2,7 +2,12 @@
 // Clicking a node grows its colony and brings it into focus: the view zooms to
 // it and the silo's page opens beside it. Clicking the node again, Back or
 // Escape zooms out.
-import { EASE, circle, onActivate, reduceMotion as reduce } from './reveal';
+//
+// Routing: each silo has its own URL (/recording/ and so on), built as its own
+// page with that silo open. Here, focusing pushes the silo's URL and title,
+// zooming out pushes the homepage's, and the browser's Back and Forward move
+// between them without reloading.
+import { EASE, circle, onActivate, reduceMotion as reduce } from '@shared/lib/reveal';
 
 export function initMycelium(root: HTMLElement) {
   const phone = matchMedia('(max-width: 640px)');
@@ -13,8 +18,8 @@ export function initMycelium(root: HTMLElement) {
   // ---------- the way in ----------
   // A first visit (this session) starts with the four discs overlapped in a
   // ring; the inline script in Mycelium.astro decides that before first paint
-  // by adding .intro. Entering breaks them out to their places, then names,
-  // rings and the web come in.
+  // by adding .intro. Entering breaks them out to their places, then names
+  // and the web come in.
   const drawWeb = (lag = 0) => {
     if (reduce.matches) return;
     shownNet()
@@ -93,9 +98,9 @@ export function initMycelium(root: HTMLElement) {
   const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
   // The viewBox is an attribute, so it's eased frame by frame (no inline styles).
-  function tweenBox(svg: SVGSVGElement, to: number[], dur = 900) {
+  function tweenBox(svg: SVGSVGElement, to: number[], still = false, dur = 900) {
     const from = svg.getAttribute('viewBox')!.split(' ').map(Number);
-    if (reduce.matches) return svg.setAttribute('viewBox', to.join(' '));
+    if (still || reduce.matches) return svg.setAttribute('viewBox', to.join(' '));
     const t0 = performance.now();
     const step = (now: number) => {
       const t = Math.min(1, (now - t0) / dur);
@@ -107,14 +112,24 @@ export function initMycelium(root: HTMLElement) {
   }
 
   // Fade everything but the chosen colony (or bring it all back).
-  function fadeOthers(svg: SVGSVGElement, key: string | null) {
+  // (.dimmed holds the faded opacity once the fade is done.)
+  function fadeOthers(svg: SVGSVGElement, key: string | null, still = false) {
     svg.querySelectorAll<SVGGElement>('.web, .colony').forEach((g) => {
       const dim = key !== null && !(g.classList.contains('colony') && g.dataset.node === key);
+      const was = g.classList.contains('dimmed');
       g.getAnimations().forEach((a) => a.cancel());
-      if (dim) g.animate({ opacity: [1, 0.07] }, { duration: reduce.matches ? 0 : 600, fill: 'forwards' });
       g.classList.toggle('dimmed', dim);
+      if (dim && !was && !still && !reduce.matches) g.animate({ opacity: [1, 0.07] }, { duration: 600 });
     });
   }
+
+  // ---------- the address bar ----------
+  const home = { url: root.dataset.homeUrl!, title: root.dataset.homeTitle! };
+  const panelFor = (key: string) => root.querySelector<HTMLElement>(`#focus-${key}`)!;
+  const go = (url: string, title: string) => {
+    if (location.pathname !== url) history.pushState(null, '', url);
+    document.title = title;
+  };
 
   // ---------- fit ----------
   // Shrink a page's type and spacing until it fits beside the drawing with no
@@ -140,17 +155,20 @@ export function initMycelium(root: HTMLElement) {
   });
 
   // ---------- focus ----------
-  function focusOn(key: string, project?: string) {
+  /** still: no animation (landing on a silo's URL). push: false when the
+   * browser's own Back / Forward brought us here. */
+  function focusOn(key: string, project?: string, { still = false, push = true } = {}) {
     const svg = shownNet();
-    const panel = root.querySelector<HTMLElement>(`#focus-${key}`)!;
+    const panel = panelFor(key);
     const switching = current !== key;
+    if (push) go(panel.dataset.url!, panel.dataset.title!);
     if (current && switching) setColony(current, false);
     current = key;
     root.classList.add('focused');
     root.querySelectorAll<HTMLElement>('.focus').forEach((f) => (f.hidden = f !== panel));
     fit(panel);
     if (!root.querySelector(`.colony[data-node="${key}"].open`)) setColony(key, true);
-    fadeOthers(svg, key);
+    fadeOthers(svg, key, still);
 
     // Zoom so the colony fills the part of the drawing the page doesn't cover.
     const [, , W0, H0] = fullBox.get(svg)!;
@@ -161,10 +179,10 @@ export function initMycelium(root: HTMLElement) {
     const pad = 28;
     const vw = Math.max((box.width + 2 * pad) / share, (box.height + 2 * pad) * ratio, W0 * 0.42);
     const vh = vw / ratio;
-    tweenBox(svg, [box.x + box.width / 2 - (vw * share) / 2, box.y + box.height / 2 - vh / 2, vw, vh]);
+    tweenBox(svg, [box.x + box.width / 2 - (vw * share) / 2, box.y + box.height / 2 - vh / 2, vw, vh], still);
 
     // The page grows out of the node as a circle, like the About panel.
-    if (switching && !reduce.matches) {
+    if (switching && !still && !reduce.matches) {
       const node = svg.querySelector(`.colony[data-node="${key}"] .node`)!.getBoundingClientRect();
       const pr = panel.getBoundingClientRect();
       const x = node.left + node.width / 2 - pr.left;
@@ -186,17 +204,18 @@ export function initMycelium(root: HTMLElement) {
         row.scrollIntoView({ behavior: reduce.matches ? 'auto' : 'smooth', block: 'nearest' });
       }
     }
-    if (phone.matches) {
+    if (phone.matches && !still) {
       setTimeout(() => panel.scrollIntoView({ behavior: reduce.matches ? 'auto' : 'smooth' }), reduce.matches ? 0 : 1000);
     }
   }
 
-  function unfocus() {
+  function unfocus({ push = true } = {}) {
     const key = current;
     if (!key) return;
     current = '';
+    if (push) go(home.url, home.title);
     const svg = shownNet();
-    const panel = root.querySelector<HTMLElement>(`#focus-${key}`)!;
+    const panel = panelFor(key);
     root.classList.remove('focused');
     setColony(key, false);
     fadeOthers(svg, null);
@@ -218,9 +237,27 @@ export function initMycelium(root: HTMLElement) {
     const col = tip.closest<SVGGElement>('.colony')!;
     onActivate(tip, () => focusOn(col.dataset.node!, tip.dataset.name!));
   });
-  root.querySelectorAll<HTMLElement>('[data-focus-back]').forEach((b) => b.addEventListener('click', unfocus));
+  // Back is a link home, so it works without JS too.
+  root.querySelectorAll<HTMLElement>('[data-focus-back]').forEach((b) =>
+    b.addEventListener('click', (e) => {
+      e.preventDefault();
+      unfocus();
+    }),
+  );
   // Escape belongs to the About panel while it's open (its <dialog> handles it).
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && current && !document.querySelector('dialog[open]')) unfocus();
   });
+
+  // The browser's Back / Forward: follow the URL to a silo, or out to the drawing.
+  addEventListener('popstate', () => {
+    const panel = [...root.querySelectorAll<HTMLElement>('.focus')].find((f) => f.dataset.url === location.pathname);
+    const key = panel?.dataset.pillar;
+    if (key) focusOn(key, undefined, { push: false });
+    else unfocus({ push: false });
+    document.title = panel?.dataset.title ?? home.title;
+  });
+
+  // Landed on a silo's own URL: it's already open in the HTML; zoom to it.
+  if (root.dataset.focus) focusOn(root.dataset.focus, undefined, { still: true, push: false });
 }

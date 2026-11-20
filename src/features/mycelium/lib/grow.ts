@@ -5,7 +5,7 @@
 // A fixed seed means the same drawing on every build, so the page ships plain
 // SVG paths and no drawing code.
 
-import type { Pillar, PillarKey } from '../data/catalog';
+import type { Pillar, PillarKey } from '@shared/content/catalog';
 import { placeOnMap } from './usmap';
 
 type Pt = { x: number; y: number };
@@ -254,7 +254,10 @@ export function grow(
           if (inside(end)) limb(from, end, wd * 0.55, delay + t * (420 + depth * 120), depth - 1);
         }
       };
-      tipPts.forEach(({ pt }, k) => limb(o, pt, 3.2, lag + k * 80, 2));
+      // Places on a map get one plain straight line each: the map is busy enough.
+      tipPts.forEach(({ pt }, k) =>
+        box ? lines.push({ d: `M${P(o)} L${P(pt)}`, w: 2, delay: lag + k * 80, dur: 700 }) : limb(o, pt, 3.2, lag + k * 80, 2),
+      );
     }
 
     tipPts.forEach(({ it, ang, pt, right, left, above }, k) => {

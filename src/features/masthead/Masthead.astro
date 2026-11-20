@@ -1,6 +1,6 @@
 ---
 // The SILO title (which opens About) and the scrolling banner under it.
-import { banner } from '../data/catalog';
+import { banner, label } from '@shared/content/catalog';
 
 // Enough copies that one group is wider than any screen; the track holds two
 // groups and slides left by exactly one, so the loop has no seam.
@@ -15,10 +15,10 @@ const copies = Array.from({ length: 8 });
         data-open="silo-about"
         aria-haspopup="dialog"
         aria-expanded="false"
-        aria-label="Silo: about us"
+        aria-label={`${label.name}: about us`}
       >
         <span class="tag"><i>About</i>↗</span>
-        <span class="name">Silo</span>
+        <span class="name">{label.name}</span>
       </button>
     </h1>
 
@@ -53,10 +53,17 @@ const copies = Array.from({ length: 8 });
     display: flex;
     cursor: pointer;
   }
+  /* "About ↗" beside the title: bigger than the usual 9px tag, growing a
+     little with the window */
   .about-btn .tag {
     width: auto;
     min-width: 1.7rem;
+    font-size: clamp(13px, 1.5cqw, 20px);
+    margin-right: 0.35em;
     transition: color 0.2s;
+  }
+  .about-btn .tag i {
+    font-size: 1em;
   }
   .about-btn .name {
     transition: color 0.2s;

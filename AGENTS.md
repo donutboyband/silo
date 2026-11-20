@@ -24,17 +24,44 @@ assets-only Worker (no server code). Build output in `dist/` is uploaded as-is.
 
 ## Layout
 
-- `src/pages/` – routes: `index.astro` (the homepage), `decamp.astro` (the DeCamp one-sheet), `404.astro`
-- `src/layouts/Base.astro` – shared page shell
-- `src/components/` – the homepage's parts: `TopBar`, `Masthead` (SILO title and banner), `Mycelium` (the network drawing; one SVG per layout in `MyceliumNet`), `SiloDetail` (a silo's page beside the drawing), `Panels` (the About panel), `SocialIcon`
-- `src/data/catalog.ts` – site content (label info, pillars and items, social accounts, DeCamp one-sheet lists); edit this to change what's listed
-- `src/lib/` – build-time code: `mycelium.ts` (grows the network), `mycelium-layouts.ts` (wide and tall drawings), `usmap.ts` (US map paths), `links.ts` (markup helpers)
-- `src/scripts/` – browser code shared between components: `mycelium.ts`, `reveal.ts` (motion and keyboard helpers), `signup.ts` (email forms)
-- `src/styles/silo.css` – global styles: tokens (`--accent`, pillar colours), the panel title and sign-up row
-- `src/assets/` – images processed by Astro at build time (output in `/_astro/`, hashed)
+The code is organized as feature slices, in three layers. Imports go one way:
+`pages` → `views` → `features` → `shared`. Features don't import each other;
+a view composes them (for example, `Home` puts `SiloDetail` inside the
+drawing's `FocusPanel`). Aliases: `@views/*`, `@features/*`, `@shared/*`.
+
+- `src/pages/` – routes only, each a line or two:
+  - `index.astro` – `/`
+  - `[silo].astro` – `/recording/`, `/decamp/`, `/creators/`, `/label/`: the homepage with that silo in focus
+  - `decamp/one-sheet.astro` – `/decamp/one-sheet/`
+  - `404.astro`
+- `src/views/` – whole pages built from features: `home/Home.astro`, `decamp-one-sheet/` (with its images)
+- `src/features/` – one folder per feature, with an `index.ts` as its public API:
+  - `mycelium/` – the network drawing: components, `mycelium.client.ts` (browser code, including the URL handling), `lib/` (build-time network, layouts, US map)
+  - `silo-detail/` – a silo's page beside the drawing
+  - `about/` – the About panel
+  - `top-bar/` – social menus, Subscribe, Contact
+  - `masthead/` – the title and news banner
+- `src/shared/` – used by several features:
+  - `content/catalog.ts` – site content (the main name, label info, pillars and items, social accounts, DeCamp one-sheet lists); edit this to change what's listed
+  - `content/routes.ts` – every URL and page title
+  - `content/social-menus.ts`
+  - `layouts/Base.astro` – the page shell
+  - `styles/silo.css` – global styles and tokens (`--accent`, pillar colours)
+  - `lib/` – `links.ts` (markup helpers), `reveal.ts` (motion and keyboard helpers)
+  - `ui/` – `SocialIcon`, `signup/` (the email row and its handler)
 - `public/` – copied verbatim into `dist/`: `_headers` (security and cache headers), `favicon.svg`, `fonts/`, `silo/` (marks and grain)
 - `astro.config.mjs` – Astro config, including the Content-Security-Policy
 - `wrangler.jsonc` – Worker config: custom domains, no workers.dev or preview URLs
+
+## Routing
+
+Astro's file routes, all built as static HTML. Each silo URL is its own page
+with that silo already open, so it works on a direct load and without JS. On
+the homepage, opening or closing a silo changes the URL and title through the
+History API (`mycelium.client.ts`), and Back and Forward work without a
+reload. Page-to-page navigation cross-fades with CSS view transitions.
+Astro's `<ClientRouter />` isn't used: it swaps pages in without applying each
+page's CSP. Links use the trailing-slash form Cloudflare serves (`/decamp/`).
 
 ## Constraints
 

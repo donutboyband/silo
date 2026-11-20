@@ -1,0 +1,40 @@
+---
+// The homepage: Silo drawn as four nodes on one mycelium network. Served at /
+// and, with that silo already in focus, at each silo's URL (/recording/ ...).
+import type { PillarKey } from '@shared/content/catalog';
+import { pillars } from '@shared/content/catalog';
+import { titleFor } from '@shared/content/routes';
+import Base from '@shared/layouts/Base.astro';
+import { TopBar } from '@features/top-bar';
+import { Masthead } from '@features/masthead';
+import { Mycelium, FocusPanel } from '@features/mycelium';
+import { SiloDetail } from '@features/silo-detail';
+import { AboutPanel } from '@features/about';
+
+interface Props {
+  /** the silo in focus, when this is a silo's URL */
+  focus?: PillarKey;
+}
+const { focus } = Astro.props;
+const silo = pillars.find((p) => p.key === focus);
+---
+
+<Base title={titleFor(silo)} description={silo?.desc}>
+  <TopBar />
+
+  <main class="site-main">
+    <Masthead />
+    <Mycelium focus={focus}>
+      {
+        pillars.map((p) => (
+          <FocusPanel p={p} open={p.key === focus}>
+            {/* Places (DeCamp) are already on the map beside it: just the summary. */}
+            <SiloDetail p={p} projects={!p.items.some((it) => it.at)} />
+          </FocusPanel>
+        ))
+      }
+    </Mycelium>
+  </main>
+
+  <AboutPanel />
+</Base>

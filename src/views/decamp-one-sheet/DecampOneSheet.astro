@@ -2,12 +2,13 @@
 // DeCamp one-sheet (v.1), rebuilt from DeCamp_OneSheet.pdf. Placeholder until
 // DeCamp has a fuller page.
 import { Picture } from 'astro:assets';
-import Base from '../layouts/Base.astro';
-import { label, pillars, about, decamp } from '../data/catalog';
-import { socialMenus, accountFor } from '../data/social-menus';
-import { linkAttrs } from '../lib/links';
-import mountainStudio from '../assets/decamp/mountain-studio.jpg';
-import organWindow from '../assets/decamp/organ-window.jpg';
+import Base from '@shared/layouts/Base.astro';
+import { label, pillars, about, decamp } from '@shared/content/catalog';
+import { socialMenus, accountFor } from '@shared/content/social-menus';
+import { linkAttrs } from '@shared/lib/links';
+import { routes } from '@shared/content/routes';
+import mountainStudio from './images/mountain-studio.jpg';
+import organWindow from './images/organ-window.jpg';
 
 const issues = pillars.find((p) => p.key === 'decamp')!.items;
 const site = issues.find((it) => it.url?.startsWith('http'))?.url;
@@ -18,12 +19,12 @@ const social = [
 ---
 
 <Base
-  title="DeCamp · Silo"
+  title={`DeCamp · ${label.name}`}
   preloadFont={false}
   description="DeCamp is a traveling music collective: a new location every issue, two issues a year. Each issue is a four-song EP on vinyl and a print zine."
 >
   <div class="page">
-    <a class="back" href="/">← Silo</a>
+    <a class="back" href={routes.silo('decamp')}>← {label.name}</a>
 
     <article class="sheet">
       <header class="bar">

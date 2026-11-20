@@ -1,19 +1,6 @@
 ---
-// The homepage: Silo drawn as four nodes on one mycelium network.
-import Base from '../layouts/Base.astro';
-import TopBar from '../components/TopBar.astro';
-import Masthead from '../components/Masthead.astro';
-import Panels from '../components/Panels.astro';
-import Mycelium from '../components/Mycelium.astro';
+// / : the homepage.
+import Home from '@views/home/Home.astro';
 ---
 
-<Base>
-  <TopBar />
-
-  <main class="site-main">
-    <Masthead />
-    <Mycelium />
-  </main>
-
-  <Panels />
-</Base>
+<Home />

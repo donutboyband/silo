@@ -2,8 +2,8 @@
 // The full-screen About panel. It opens out of the button that names it with
 // data-open="<panel id>" (the SILO title), growing from that button as a circle.
 // The silos themselves open inside the mycelium drawing (Mycelium.astro).
-import { pillars, label, about } from '../data/catalog';
-import { pad2 } from '../lib/links';
+import { pillars, label, about } from '@shared/content/catalog';
+import { pad2 } from '@shared/lib/links';
 ---
 
   {/* ---------- About: opens from the SILO title ---------- */}
@@ -15,7 +15,7 @@ import { pad2 } from '../lib/links';
 
       <h2 class="panel-title row" id="silo-about-title">
         <span class="tag"><i>est</i>{label.year}</span>
-        <span class="name">About Silo</span>
+        <span class="name">About {label.name}</span>
       </h2>
 
       <div class="about-body">
@@ -58,7 +58,7 @@ import { pad2 } from '../lib/links';
 <script>
   // A panel opens as a circle that grows out of the button you clicked until it
   // fills the screen, then closes back into it.
-  import { EASE as ease, circle, reduceMotion as reduce } from '../scripts/reveal';
+  import { EASE as ease, circle, reduceMotion as reduce } from '@shared/lib/reveal';
 
   // The button a panel opens from: the SILO title for About.
   const circleBtn = (id: string) => document.querySelector<HTMLElement>(`[data-open="${id}"]`)!;

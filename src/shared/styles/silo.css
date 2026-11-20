@@ -26,6 +26,15 @@
   box-sizing: border-box;
 }
 
+/* Page to page (the homepage and the one-sheet) cross-fades in browsers that
+   support it. Plain CSS, so the CSP has nothing to allow. Silo to silo on the
+   homepage doesn't reload at all. */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+  }
+}
+
 html {
   background: var(--bg);
 }
@@ -125,45 +134,6 @@ html.locked {
   line-height: 0.94;
   letter-spacing: -0.01em;
   text-transform: uppercase;
-}
-
-/* An email box and its Sign up button (the Subscribe menu, each silo's page).
-   Each form sets the colours: --field (text and border), --field-bg,
-   --field-dim (placeholder), --btn-bg and --btn-fg. */
-.signup-row {
-  display: flex;
-  gap: 8px;
-}
-.signup-row input {
-  flex: 1;
-  min-width: 0;
-  padding: 9px 10px;
-  border: 2px solid var(--field);
-  background: var(--field-bg);
-  color: var(--field);
-  font: inherit;
-  font-weight: 500;
-}
-.signup-row input::placeholder {
-  color: var(--field-dim);
-}
-.signup-row button {
-  all: unset;
-  cursor: pointer;
-  padding: 9px 14px;
-  background: var(--btn-bg);
-  color: var(--btn-fg);
-  font-weight: 800;
-  text-transform: uppercase;
-}
-.signup-note {
-  margin: 10px 0 0;
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.4;
-}
-.signup-note:empty {
-  display: none;
 }
 
 /* visually hidden, still read aloud */

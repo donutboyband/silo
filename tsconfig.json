@@ -1,5 +1,13 @@
 {
   "extends": "astro/tsconfigs/strict",
   "include": [".astro/types.d.ts", "**/*"],
-  "exclude": ["dist"]
+  "exclude": ["dist"],
+  "compilerOptions": {
+    // Feature slices: views compose features, features build on shared.
+    "paths": {
+      "@shared/*": ["./src/shared/*"],
+      "@features/*": ["./src/features/*"],
+      "@views/*": ["./src/views/*"]
+    }
+  }
 }

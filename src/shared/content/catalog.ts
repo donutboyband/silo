@@ -1,4 +1,6 @@
 export const label = {
+  /** The main name: the big title, page titles, About. */
+  name: 'Myco',
   contact: 'casey@silorecording.com',
   year: '2026',
 };
@@ -9,8 +11,8 @@ export const label = {
  */
 export const about = {
   summary: [
-    'Silo is four things that share one roof. A recording studio, label and residency. A traveling music collective. Tools for the people who make records. And a label for small, fun music software.',
-    'No silo is the home base. Each one stands on its own, and together they make Silo.',
+    'Myco is four things that share one roof. A recording studio, label and residency. A traveling music collective. Tools for the people who make records. And a label for small, fun music software.',
+    'No silo is the home base. Each one stands on its own, and together they make Myco.',
   ],
   team: [
     { name: 'Casey Bruce', role: 'Role TBD', bio: 'A line or two about Casey goes here.' },
@@ -21,7 +23,7 @@ export const about = {
 /** The scrolling strip under the Silo title. Change the text to post news. */
 export const banner = {
   text: 'DeCamp Issue 0.1 · Kalamazoo, MI · 2026 · Read the one-sheet',
-  url: '/decamp',
+  url: '/decamp/one-sheet/',
 };
 
 /** The four silos. Each key has a [data-pillar] colour in src/styles/silo.css
@@ -114,40 +116,20 @@ export const pillars: Pillar[] = [
     key: 'decamp',
     socialName: 'DeCamp',
     desc: 'A traveling music collective. A new location every issue, two issues a year: a four-song EP on vinyl and a print zine about the place.',
-    url: '/decamp',
-    urlLabel: 'Read the one-sheet',
     items: [
       {
         no: '0.1',
         year: '2026',
         name: 'Kalamazoo, MI',
         at: [42.2917, -85.5872],
-        labelSide: 'left',
+        labelSide: 'right',
         desc: 'Issue 0.1, 2026. DeCamp is a traveling music collective: twice a year we rent a house somewhere with a sound, set up a mobile studio, and write and record a four-song EP in a week. Each issue is a limited vinyl pressing plus a print zine about the city, its studios, venues and the people making music there.',
         url: 'https://decamp.co',
-      },
-      {
-        no: '01',
-        year: '2027',
-        name: 'Asheville, NC',
-        at: [35.5951, -82.5515],
-        labelSide: 'left',
-        desc: 'Issue 01, 2027. The next DeCamp residency: a week in Asheville, a four-song EP recorded on location, and a zine on the city’s music.',
-        soon: true,
-      },
-      {
-        no: '02',
-        year: '2028',
-        name: 'Catskill, NY',
-        at: [42.2173, -73.8646],
-        labelSide: 'above',
-        desc: 'Issue 02, 2028. A week in the Catskills, a four-song EP recorded on location, and a zine on the place and its music.',
-        soon: true,
       },
     ],
   },
   {
-    name: 'Tools for Creators',
+    name: 'Platforms',
     key: 'creators',
     socialName: 'Willow',
     desc: 'Software for independent artists and the people they make records with.',
@@ -167,14 +149,14 @@ export const pillars: Pillar[] = [
     ],
   },
   {
-    name: 'Software Label',
+    name: 'Sandbox',
     key: 'label',
     socialName: 'Silo',
-    desc: 'Small pieces of music software, released like records.',
+    desc: 'Music toys for fun and experimentation.',
     items: [
       {
         no: '1',
-        name: 'Sleeve',
+        name: 'Linernotes',
         desc: 'The liner notes streaming forgot.',
         url: 'https://sleeve-smoky.vercel.app/',
       },
@@ -188,7 +170,7 @@ export const pillars: Pillar[] = [
   },
 ];
 
-/** The DeCamp one-sheet (/decamp): what inspired it, and its own Substack. */
+/** The DeCamp one-sheet (/decamp/one-sheet/): what inspired it, and its own Substack. */
 export const decamp = {
   references: [
     { name: 'Unknown Mortal Orchestra: IC Series' },

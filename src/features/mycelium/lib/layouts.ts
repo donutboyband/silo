@@ -1,8 +1,8 @@
 // The two homepage drawings: a wide one, and a tall one for phones (CSS shows
 // one). Each says where the four nodes sit, how far their roots reach, and
 // where DeCamp's US map goes.
-import { pillars } from '../data/catalog';
-import { grow, type Network } from './mycelium';
+import { pillars } from '@shared/content/catalog';
+import { grow, type Network } from './grow';
 
 export interface Drawing {
   id: 'wide' | 'tall';

@@ -1,0 +1,27 @@
+---
+// The frame a silo's page opens in beside its colony: a Back button, then
+// whatever the view puts in it (the silo's details). Its URL and title are
+// what the address bar shows while it's in focus.
+import type { Pillar } from '@shared/content/catalog';
+import { routes, titleFor } from '@shared/content/routes';
+
+interface Props {
+  p: Pillar;
+  /** open on load (the page is this silo's URL) */
+  open?: boolean;
+}
+const { p, open = false } = Astro.props;
+---
+
+<aside
+  class="focus"
+  id={`focus-${p.key}`}
+  data-pillar={p.key}
+  data-url={routes.silo(p.key)}
+  data-title={titleFor(p)}
+  hidden={!open}
+  aria-labelledby={`focus-${p.key}-title`}
+>
+  <a class="focus-back" href={routes.home} data-focus-back>← All silos</a>
+  <slot />
+</aside>

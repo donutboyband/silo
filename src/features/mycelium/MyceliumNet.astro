@@ -2,19 +2,23 @@
 // One drawing of the homepage network (wide or tall), as plain SVG. No styles
 // of its own: Mycelium.astro styles it, so these hundreds of elements don't
 // each carry a scoping attribute.
-import { startInRing, type Drawing } from '../lib/mycelium-layouts';
+import { label, type PillarKey } from '@shared/content/catalog';
+import { startInRing, type Drawing } from './lib/layouts';
 
-type Props = Drawing;
-const { id, net, ring } = Astro.props;
+type Props = Drawing & {
+  /** the colony that's open on load, if any; the others start dimmed */
+  open?: PillarKey;
+};
+const { id, net, ring, open } = Astro.props;
 ---
 
 <svg
   class:list={['net', id]}
   viewBox={`0 0 ${net.w} ${net.h}`}
   role="group"
-  aria-label="Silo as a mycelium network: four nodes. Choose one to grow its threads."
+  aria-label={`${label.name} as a mycelium network: four nodes. Choose one to grow its threads.`}
 >
-  <g class="web" aria-hidden="true">
+  <g class:list={['web', { dimmed: !!open }]} aria-hidden="true">
     {net.web.map((p) => <path d={p.d} stroke-width={p.w} stroke-opacity={p.o} data-pillar={p.c} pathLength="1" />)}
   </g>
 
@@ -22,7 +26,7 @@ const { id, net, ring } = Astro.props;
     net.nodes.map((n, ni) => {
       const start = startInRing(net, ni, ring);
       return (
-        <g class="colony" data-pillar={n.key} data-node={n.key}>
+        <g class:list={['colony', { open: open === n.key, dimmed: open && open !== n.key }]} data-pillar={n.key} data-node={n.key}>
           {/* DeCamp's map, drawn once in Mycelium.astro (#usmap) */}
           {n.map && (
             <use
@@ -63,11 +67,10 @@ const { id, net, ring } = Astro.props;
             transform={`translate(${n.x} ${n.y})`}
             role="button"
             tabindex="0"
-            aria-expanded="false"
+            aria-expanded={String(open === n.key)}
             aria-label={`${n.name}: grow its threads`}
           >
             <circle class="node-hit" r={net.nodeR + 18} />
-            <circle class="node-halo" r={net.nodeR + 10} />
             {/* the silo's disc: its colour, print grain, and its brand mark.
                 It starts in the opening ring (data-dx/dy/k) and breaks out. */}
             <g class="node-body" data-dx={start.dx} data-dy={start.dy} data-k={start.k}>

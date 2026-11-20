@@ -1,5 +1,6 @@
 ---
 import '../styles/silo.css';
+import { label } from '@shared/content/catalog';
 
 interface Props {
   title?: string;
@@ -9,8 +10,8 @@ interface Props {
 }
 
 const {
-  title = 'Silo',
-  description = 'Silo: Silo Recording, DeCamp, tools for creators, and a software label.',
+  title = label.name,
+  description = `${label.name}: Silo Recording, DeCamp, Platforms, and Sandbox.`,
   preloadFont = true,
 } = Astro.props;
 ---

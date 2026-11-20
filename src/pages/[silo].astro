@@ -1,0 +1,13 @@
+---
+// /recording/, /decamp/, /creators/, /label/ : the homepage with that silo in
+// focus. Built once per silo, so each URL has its own HTML and title.
+import type { GetStaticPaths } from 'astro';
+import { pillars } from '@shared/content/catalog';
+import Home from '@views/home/Home.astro';
+
+export const getStaticPaths = (() => pillars.map((p) => ({ params: { silo: p.key }, props: { key: p.key } }))) satisfies GetStaticPaths;
+
+const { key } = Astro.props;
+---
+
+<Home focus={key} />
