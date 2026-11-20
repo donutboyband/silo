@@ -3,6 +3,7 @@
 // data-open="<panel id>" (the SILO title), growing from that button as a circle.
 // The silos themselves open inside the mycelium drawing (Mycelium.astro).
 import { pillars, label, about } from '../data/catalog';
+import { pad2 } from '../lib/links';
 ---
 
   {/* ---------- About: opens from the SILO title ---------- */}
@@ -28,7 +29,7 @@ import { pillars, label, about } from '../data/catalog';
             pillars.map((p, i) => (
               <li data-pillar={p.key}>
                 <span class="swatch" aria-hidden="true" />
-                <span class="about-silo-no">#{String(i + 1).padStart(2, '0')}</span>
+                <span class="about-silo-no">#{pad2(i + 1)}</span>
                 <span class="about-silo-name">{p.name}</span>
                 <span class="about-silo-desc">{p.desc}</span>
               </li>
@@ -56,10 +57,8 @@ import { pillars, label, about } from '../data/catalog';
 
 <script>
   // A panel opens as a circle that grows out of the button you clicked until it
-  // fills the screen, then closes back into it. Everything is set through the
-  // Web Animations API, so the CSP never has to allow inline styles.
-  const reduce = matchMedia('(prefers-reduced-motion: reduce)');
-  const ease = 'cubic-bezier(0.76, 0, 0.24, 1)';
+  // fills the screen, then closes back into it.
+  import { EASE as ease, circle, reduceMotion as reduce } from '../scripts/reveal';
 
   // The button a panel opens from: the SILO title for About.
   const circleBtn = (id: string) => document.querySelector<HTMLElement>(`[data-open="${id}"]`)!;
@@ -71,8 +70,8 @@ import { pillars, label, about } from '../data/catalog';
     const y = r.top + r.height / 2;
     const far = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
     return {
-      small: `circle(${Math.min(r.width, r.height) / 2}px at ${x}px ${y}px)`,
-      big: `circle(${far}px at ${x}px ${y}px)`,
+      small: circle(Math.min(r.width, r.height) / 2, x, y),
+      big: circle(far, x, y),
     };
   }
 
@@ -294,11 +293,4 @@ import { pillars, label, about } from '../data/catalog';
     outline-offset: 2px;
   }
 
-  .panel-title {
-    font-size: clamp(40px, calc((100vw - 60px) / 11), 160px);
-    font-weight: 800;
-    line-height: 0.94;
-    letter-spacing: -0.01em;
-    text-transform: uppercase;
-  }
 </style>

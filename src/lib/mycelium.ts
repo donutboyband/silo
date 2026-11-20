@@ -1,11 +1,11 @@
-// Draws the network for the /mycelium page at build time, as roots: each node
+// Draws the homepage network at build time, as roots: each node
 // grows a thick limb out to every project, forking finer toward the tips, over
 // fine grey rootlets that tie the four nodes together.
 //
 // A fixed seed means the same drawing on every build, so the page ships plain
 // SVG paths and no drawing code.
 
-import type { Pillar } from '../data/catalog';
+import type { Pillar, PillarKey } from '../data/catalog';
 import { placeOnMap } from './usmap';
 
 type Pt = { x: number; y: number };
@@ -16,8 +16,8 @@ export interface Line {
   w: number;
   /** stroke opacity (web only) */
   o?: number;
-  /** which silo's colour it takes (web only): a pillar key */
-  c?: string;
+  /** which silo's colour it takes (web only) */
+  c?: PillarKey;
   /** when it starts drawing, ms after its node opens */
   delay?: number;
   /** how long it takes to draw, ms */
@@ -31,19 +31,15 @@ export interface Tip {
   ly: number;
   anchor: 'start' | 'end' | 'middle';
   name: string;
-  desc: string;
-  url?: string;
   soon?: boolean;
   delay: number;
 }
 
 export interface Node {
-  key: string;
+  key: PillarKey;
   name: string;
-  desc: string;
   x: number;
   y: number;
-  labelBelow: boolean;
   /** where the node's name sits, relative to its centre */
   labelDy: number;
   /** where this node's US map sits, if its projects are places (DeCamp) */
@@ -77,6 +73,20 @@ const P = (p: Pt) => `${r1(p.x)} ${r1(p.y)}`;
 const polar = (o: Pt, ang: number, d: number): Pt => ({ x: o.x + Math.cos(ang) * d, y: o.y + Math.sin(ang) * d });
 const curve = (a: Pt, c1: Pt, c2: Pt, b: Pt) => `M${P(a)} C${P(c1)} ${P(c2)} ${P(b)}`;
 
+/** Numbers for a path, as short as SVG allows: "0.5" -> ".5", no space before "-". */
+const pack = (ns: number[]) =>
+  ns
+    .map((n) => String(r1(n)).replace(/^(-?)0\./, '$1.'))
+    .reduce((out, t) => out + (out && !t.startsWith('-') ? ' ' : '') + t, '');
+
+/** A polyline as one relative lineto run. The steps are taken between the
+ * rounded points, so rounding doesn't add up along the line. */
+const poly = (pts: Pt[]) => {
+  const q = pts.map((p) => ({ x: r1(p.x), y: r1(p.y) }));
+  const steps = q.slice(1).flatMap((p, i) => [p.x - q[i].x, p.y - q[i].y]);
+  return `M${pack([q[0].x, q[0].y])}l${pack(steps)}`;
+};
+
 /** A point on a cubic curve, for forking side branches off it. */
 function onCurve(a: Pt, c1: Pt, c2: Pt, b: Pt, t: number): Pt {
   const u = 1 - t;
@@ -98,8 +108,8 @@ export function grow(
     /** radius of the node discs (they carry the silo marks) */
     nodeR?: number;
     labels?: 'side' | 'stack';
-    /** per pillar key: a US map box (top-left corner and scale) its places land on */
-    maps?: Record<string, { x: number; y: number; s: number }>;
+    /** per silo: a US map box (top-left corner and scale) its places land on */
+    maps?: Partial<Record<PillarKey, { x: number; y: number; s: number }>>;
   },
 ): Network {
   const rand = rng(layout.seed);
@@ -122,7 +132,6 @@ export function grow(
   // in its colour, and two faint threads link the nodes (top pair and bottom
   // pair), each fading from one node's colour to the other's halfway along.
   const web: Line[] = [];
-  const poly = (pts: Pt[]) => 'M' + pts.map(P).join(' L');
 
   /** a wandering thread from `o`, heading `ang`, about `len` long */
   function hypha(o: Pt, ang: number, len: number, wd: number, depth: number, c: string, op: number) {
@@ -260,8 +269,6 @@ export function grow(
         ly: right || left ? 5 : up ? (stack ? -16 : -14) : stack ? 32 : 24,
         anchor: right ? 'start' : left ? 'end' : 'middle',
         name: it.name,
-        desc: it.desc,
-        url: it.url,
         soon: it.soon,
         delay: lag + DRAW - 100 + k * 80,
       });
@@ -294,10 +301,8 @@ export function grow(
     return {
       key: p.key,
       name: p.name,
-      desc: p.desc,
       x: o.x,
       y: o.y,
-      labelBelow: o.y < center.y,
       labelDy: labelDyFor(o),
       map: box,
       lines,

@@ -24,10 +24,17 @@ export const banner = {
   url: '/decamp',
 };
 
+/** The four silos. Each key has a [data-pillar] colour in src/styles/silo.css
+ * and a mark at public/silo/marks/<key>.svg. */
+export type PillarKey = 'recording' | 'decamp' | 'creators' | 'label';
+
+/** The names the social accounts go by. */
+export type AccountName = 'Silo' | 'DeCamp' | 'Willow';
+
 export interface Account {
-  name: string;
+  name: AccountName;
   /** Colour key: a pillar key, or 'all' for Silo itself (white). */
-  key: string;
+  key: PillarKey | 'all';
   handle?: string;
   /** Leave out until the account exists; it shows as "soon", unlinked. */
   url?: string;
@@ -54,6 +61,8 @@ export interface Item {
   url?: string;
   /** Not out yet: rendered dim, not linked. */
   soon?: boolean;
+  /** For DeCamp issues: the year it happens, e.g. '2026'. */
+  year?: string;
   /** For places (DeCamp issues): puts a dot on the map. [latitude, longitude] */
   at?: [number, number];
   /** Which side of its dot the map label sits on (default right). */
@@ -62,12 +71,11 @@ export interface Item {
 
 export interface Pillar {
   name: string;
-  /** Matches a [data-pillar] colour rule in index.astro. */
-  key: string;
+  key: PillarKey;
   /** General description, shown at the top when the silo opens. */
   desc: string;
   /** Which accounts in `social` this silo's Instagram / X icons point to. */
-  socialName: string;
+  socialName: AccountName;
   /** Optional page for the pillar itself, linked from inside the open silo. */
   url?: string;
   urlLabel?: string;
@@ -111,6 +119,7 @@ export const pillars: Pillar[] = [
     items: [
       {
         no: '0.1',
+        year: '2026',
         name: 'Kalamazoo, MI',
         at: [42.2917, -85.5872],
         labelSide: 'left',
@@ -119,6 +128,7 @@ export const pillars: Pillar[] = [
       },
       {
         no: '01',
+        year: '2027',
         name: 'Asheville, NC',
         at: [35.5951, -82.5515],
         labelSide: 'left',
@@ -127,6 +137,7 @@ export const pillars: Pillar[] = [
       },
       {
         no: '02',
+        year: '2028',
         name: 'Catskill, NY',
         at: [42.2173, -73.8646],
         labelSide: 'above',
@@ -176,3 +187,18 @@ export const pillars: Pillar[] = [
     ],
   },
 ];
+
+/** The DeCamp one-sheet (/decamp): what inspired it, and its own Substack. */
+export const decamp = {
+  references: [
+    { name: 'Unknown Mortal Orchestra: IC Series' },
+    { name: 'Record Magazine', url: 'https://record-magazine.com/' },
+    { name: 'WM Brown', url: 'https://wmbrownproject.com/magazine' },
+    { name: 'Daybreak', url: 'https://www.daybreakpub.com/' },
+    { name: 'Born Rival', url: 'https://bornrival.com/products/born-rival-magazine-volume-01' },
+    { name: 'Electronic Sound', url: 'https://www.electronicsound.co.uk/' },
+    { name: 'Heartbeat (Broccoli)', url: 'https://broccolimag.com/products/heartbeat-magazine-music-sound-emotion' },
+  ] as { name: string; url?: string }[],
+  /** Leave out until it exists; it shows unlinked. */
+  substack: undefined as string | undefined,
+};

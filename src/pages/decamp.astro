@@ -1,31 +1,25 @@
 ---
 // DeCamp one-sheet (v.1), rebuilt from DeCamp_OneSheet.pdf. Placeholder until
 // DeCamp has a fuller page.
+import { Picture } from 'astro:assets';
 import Base from '../layouts/Base.astro';
-import { label } from '../data/catalog';
+import { label, pillars, about, decamp } from '../data/catalog';
+import { socialMenus, accountFor } from '../data/social-menus';
+import { linkAttrs } from '../lib/links';
+import mountainStudio from '../assets/decamp/mountain-studio.jpg';
+import organWindow from '../assets/decamp/organ-window.jpg';
 
-const references = [
-  { name: 'Unknown Mortal Orchestra — IC Series' },
-  { name: 'Record Magazine', url: 'https://record-magazine.com/' },
-  { name: 'WM Brown', url: 'https://wmbrownproject.com/magazine' },
-  { name: 'Daybreak', url: 'https://www.daybreakpub.com/' },
-  { name: 'Born Rival', url: 'https://bornrival.com/products/born-rival-magazine-volume-01' },
-  { name: 'Electronic Sound', url: 'https://www.electronicsound.co.uk/' },
-  {
-    name: 'Heartbeat (Broccoli)',
-    url: 'https://broccolimag.com/products/heartbeat-magazine-music-sound-emotion',
-  },
-];
-
+const issues = pillars.find((p) => p.key === 'decamp')!.items;
+const site = issues.find((it) => it.url?.startsWith('http'))?.url;
 const social = [
-  { name: 'Instagram' },
-  { name: 'Twitter' },
-  { name: 'Substack' },
+  ...socialMenus.map((m) => ({ name: m.title, url: accountFor(m, 'DeCamp')?.url })),
+  { name: 'Substack', url: decamp.substack },
 ];
 ---
 
 <Base
-  title="DeCamp — Silo"
+  title="DeCamp · Silo"
+  preloadFont={false}
   description="DeCamp is a traveling music collective: a new location every issue, two issues a year. Each issue is a four-song EP on vinyl and a print zine."
 >
   <div class="page">
@@ -40,10 +34,14 @@ const social = [
 
       <section class="grid two intro">
         <div class="cell photo">
-          <img
-            src="/decamp/mountain-studio.jpg"
-            width="825"
-            height="1024"
+          {/* the first thing on the page: shown at most 380px wide */}
+          <Picture
+            src={mountainStudio}
+            formats={['avif', 'webp']}
+            widths={[380, 760]}
+            sizes="(max-width: 760px) calc(100vw - 64px), 380px"
+            loading="eager"
+            fetchpriority="high"
             alt="A synth, a small keyboard and headphones on the floor of a glass room looking out over forested mountains."
           />
         </div>
@@ -52,13 +50,13 @@ const social = [
           <hr />
           <p>
             DeCamp is a traveling music collective. Twice a year, a small group of musicians, an
-            engineer, a producer, and a creative director packs up and goes — to a place chosen for
+            engineer, a producer, and a creative director packs up and goes to a place chosen for
             its culture, its music history, its energy. We rent a house, set up a mobile studio, and
             spend a week writing and recording a four-song EP.
           </p>
           <p>
             Each issue features the music-making process from start to finish alongside an in-depth
-            look at the music culture of the city — the people, the places, and the history that
+            look at the music culture of the city: the people, the places, and the history that
             define it. The result is two things released together: a limited-run vinyl record and a
             print zine.
           </p>
@@ -124,7 +122,7 @@ const social = [
           <div>
             <h3 class="sub">Every city has a sound. We want to document that.</h3>
             <p>
-              The music publications that exist today are mostly technical — gear reviews, recording
+              The music publications that exist today are mostly technical: gear reviews, recording
               tips, industry trade. Nothing covers the music culture of a place the way travel and
               food magazines cover their subjects. Countless cities carry a distinct music history
               that’s never been told. This is that publication.
@@ -166,9 +164,7 @@ const social = [
         <div class="cell list-cell">
           <h2 class="label">Residencies</h2>
           <ul class="dots">
-            <li>Issue 0.1 · Kalamazoo, MI · ’26</li>
-            <li>Issue 01 · Asheville, NC · ’27</li>
-            <li>Issue 02 · Catskill, NY · ’28</li>
+            {issues.map((it) => <li>Issue {it.no} · {it.name} · ’{it.year?.slice(2)}</li>)}
           </ul>
           <hr />
           <h2 class="label">Releases</h2>
@@ -178,11 +174,11 @@ const social = [
           </ul>
         </div>
         <div class="cell photo flush">
-          <img
-            src="/decamp/organ-window.jpg"
-            width="788"
-            height="1074"
-            loading="lazy"
+          <Picture
+            src={organWindow}
+            formats={['avif', 'webp']}
+            widths={[400, 788]}
+            sizes="(max-width: 760px) 100vw, 360px"
             alt="A wooden organ beneath a tall window looking out over a hillside town."
           />
         </div>
@@ -193,12 +189,10 @@ const social = [
           <h2 class="label small">▪ References &amp; Inspo</h2>
           <ul class="refs">
             {
-              references.map((r) => (
+              decamp.references.map((r) => (
                 <li>
                   {r.url ? (
-                    <a href={r.url} target="_blank" rel="noopener">
-                      {r.name}
-                    </a>
+                    <a {...linkAttrs(r.url)}>{r.name}</a>
                   ) : (
                     <span>{r.name}</span>
                   )}
@@ -210,7 +204,7 @@ const social = [
         <div class="cell contact">
           <div>
             <h2 class="label small">▪ Contact</h2>
-            <p>Casey Bruce</p>
+            <p>{about.team[0].name}</p>
             <p><a href={`mailto:${label.contact}?subject=DeCamp`}>{label.contact}</a></p>
           </div>
           <div>
@@ -219,9 +213,7 @@ const social = [
               social.map((s) => (
                 <p>
                   {s.url ? (
-                    <a href={s.url} target="_blank" rel="noopener">
-                      {s.name}
-                    </a>
+                    <a {...linkAttrs(s.url)}>{s.name}</a>
                   ) : (
                     s.name
                   )}
@@ -231,13 +223,13 @@ const social = [
           </div>
           <div>
             <h2 class="label small">▪ Web</h2>
-            <p>decamp.co</p>
+            <p>{site ? <a {...linkAttrs(site)}>{new URL(site).host}</a> : 'Soon'}</p>
           </div>
         </div>
       </footer>
 
       <div class="bar fine">
-        <span>© DeCamp 2026</span>
+        <span>© DeCamp {label.year}</span>
         <span>One-Sheet · v.1</span>
       </div>
     </article>
@@ -245,7 +237,7 @@ const social = [
 </Base>
 
 <style>
-  /* The one-sheet has its own paper look, separate from the black Silo list. */
+  /* The one-sheet has its own paper look, separate from the black homepage. */
   :global(html),
   :global(body) {
     --bg: #e7e4dc;
@@ -403,7 +395,7 @@ const social = [
     align-items: center;
     justify-content: center;
   }
-  .photo img {
+  .photo :global(img) {
     display: block;
     width: 100%;
     max-width: 380px;
@@ -412,7 +404,7 @@ const social = [
   .flush {
     padding: 0;
   }
-  .flush img {
+  .flush :global(img) {
     max-width: none;
     height: 100%;
     object-fit: cover;
@@ -588,7 +580,7 @@ const social = [
     .cols {
       gap: 28px;
     }
-    .flush img {
+    .flush :global(img) {
       height: auto;
     }
     .contact {

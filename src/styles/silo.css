@@ -14,6 +14,8 @@
   --fg: #fff;
   --dim: #8c8c8c;
   --faint: #3d3d3d;
+  /* Silo Recording's orange, also the site's accent */
+  --accent: #ff5b26;
   --f-mono: 'Martian Mono', ui-monospace, monospace;
   color-scheme: dark;
 }
@@ -53,7 +55,7 @@ a {
   outline-offset: 2px;
 }
 
-/* ---------- shared by the Silo homepage versions ---------- */
+/* ---------- the homepage ---------- */
 body {
   container-type: inline-size;
 }
@@ -74,7 +76,7 @@ html.locked {
 /* Pillar colours live here, not in style="" attributes, so the CSP
    doesn't need to allow inline styles. */
 [data-pillar='recording'] {
-  --c: #ff5b26;
+  --c: var(--accent);
 }
 [data-pillar='decamp'] {
   --c: #e9dcb8;
@@ -114,6 +116,54 @@ html.locked {
 .tag i {
   font-style: normal;
   font-size: 9px;
+}
+
+/* the big uppercase heading at the top of a panel */
+.panel-title {
+  font-size: clamp(40px, calc((100vw - 60px) / 11), 160px);
+  font-weight: 800;
+  line-height: 0.94;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+
+/* An email box and its Sign up button (the Subscribe menu, each silo's page).
+   Each form sets the colours: --field (text and border), --field-bg,
+   --field-dim (placeholder), --btn-bg and --btn-fg. */
+.signup-row {
+  display: flex;
+  gap: 8px;
+}
+.signup-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 2px solid var(--field);
+  background: var(--field-bg);
+  color: var(--field);
+  font: inherit;
+  font-weight: 500;
+}
+.signup-row input::placeholder {
+  color: var(--field-dim);
+}
+.signup-row button {
+  all: unset;
+  cursor: pointer;
+  padding: 9px 14px;
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.signup-note {
+  margin: 10px 0 0;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.signup-note:empty {
+  display: none;
 }
 
 /* visually hidden, still read aloud */

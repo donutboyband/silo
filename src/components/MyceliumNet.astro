@@ -1,0 +1,101 @@
+---
+// One drawing of the homepage network (wide or tall), as plain SVG. No styles
+// of its own: Mycelium.astro styles it, so these hundreds of elements don't
+// each carry a scoping attribute.
+import { startInRing, type Drawing } from '../lib/mycelium-layouts';
+
+type Props = Drawing;
+const { id, net, ring } = Astro.props;
+---
+
+<svg
+  class:list={['net', id]}
+  viewBox={`0 0 ${net.w} ${net.h}`}
+  role="group"
+  aria-label="Silo as a mycelium network: four nodes. Choose one to grow its threads."
+>
+  <g class="web" aria-hidden="true">
+    {net.web.map((p) => <path d={p.d} stroke-width={p.w} stroke-opacity={p.o} data-pillar={p.c} pathLength="1" />)}
+  </g>
+
+  {
+    net.nodes.map((n, ni) => {
+      const start = startInRing(net, ni, ring);
+      return (
+        <g class="colony" data-pillar={n.key} data-node={n.key}>
+          {/* DeCamp's map, drawn once in Mycelium.astro (#usmap) */}
+          {n.map && (
+            <use
+              class="usmap"
+              href="#usmap"
+              transform={`translate(${n.map.x} ${n.map.y}) scale(${n.map.s})`}
+              aria-hidden="true"
+            />
+          )}
+          <g class="hyphae" aria-hidden="true">
+            {n.lines.map((h) => (
+              <path d={h.d} stroke-width={h.w} pathLength="1" data-delay={h.delay} data-dur={h.dur} />
+            ))}
+          </g>
+
+          <g class="tips">
+            {n.tips.map((t) => (
+              <g
+                class:list={['tip', { soon: t.soon }]}
+                transform={`translate(${t.x} ${t.y})`}
+                role="button"
+                tabindex="0"
+                aria-label={`${n.name}: ${t.name}${t.soon ? ', coming soon' : ''}`}
+                data-delay={t.delay}
+                data-name={t.name}
+              >
+                <circle class="tip-hit" r="16" />
+                <circle class="tip-dot" r="5" />
+                <text class="tip-label" x={t.lx} y={t.ly} text-anchor={t.anchor}>
+                  {t.name}
+                </text>
+              </g>
+            ))}
+          </g>
+
+          <g
+            class="node"
+            transform={`translate(${n.x} ${n.y})`}
+            role="button"
+            tabindex="0"
+            aria-expanded="false"
+            aria-label={`${n.name}: grow its threads`}
+          >
+            <circle class="node-hit" r={net.nodeR + 18} />
+            <circle class="node-halo" r={net.nodeR + 10} />
+            {/* the silo's disc: its colour, print grain, and its brand mark.
+                It starts in the opening ring (data-dx/dy/k) and breaks out. */}
+            <g class="node-body" data-dx={start.dx} data-dy={start.dy} data-k={start.k}>
+              <circle class="node-core" r={net.nodeR} />
+              <image
+                class="node-grain"
+                href="/silo/grain.svg"
+                x={-net.nodeR}
+                y={-net.nodeR}
+                width={net.nodeR * 2}
+                height={net.nodeR * 2}
+                preserveAspectRatio="xMidYMid slice"
+              />
+              <image
+                class="node-mark"
+                href={`/silo/marks/${n.key}.svg`}
+                x={-net.nodeR * 0.64}
+                y={-net.nodeR * 0.64}
+                width={net.nodeR * 1.28}
+                height={net.nodeR * 1.28}
+              />
+            </g>
+            <text class="node-label" y={n.labelDy} text-anchor="middle">
+              {n.name}
+            </text>
+          </g>
+        </g>
+      );
+    })
+  }
+</svg>

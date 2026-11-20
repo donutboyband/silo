@@ -4,11 +4,14 @@ import '../styles/silo.css';
 interface Props {
   title?: string;
   description?: string;
+  /** false on pages that don't set type in Martian Mono (the DeCamp one-sheet) */
+  preloadFont?: boolean;
 }
 
 const {
   title = 'Silo',
   description = 'Silo: Silo Recording, DeCamp, tools for creators, and a software label.',
+  preloadFont = true,
 } = Astro.props;
 ---
 
@@ -22,7 +25,7 @@ const {
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="preload" href="/fonts/martian-mono.woff2" as="font" type="font/woff2" crossorigin />
+    {preloadFont && <link rel="preload" href="/fonts/martian-mono.woff2" as="font" type="font/woff2" crossorigin />}
   </head>
   <body>
     <slot />

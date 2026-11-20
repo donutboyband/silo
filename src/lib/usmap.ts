@@ -7,19 +7,17 @@ import { presimplify, simplify } from 'topojson-simplify';
 import type { Topology, GeometryCollection } from 'topojson-specification';
 import usRaw from 'us-atlas/states-albers-10m.json';
 
-export const MAP_W = 975;
-export const MAP_H = 610;
-
 // The atlas is already projected with this projection; cities use it too.
 const albers = geoAlbersUsa().scale(1300).translate([487.5, 305]);
 
-/** Outline and state lines, simplified by `detail` (bigger = coarser). */
-export function usPaths(detail = 0.6) {
+/** Outline and state lines, simplified by `detail` (bigger = coarser). The
+ * map is drawn at half size or so, where whole units are under a pixel. */
+export function usPaths(detail = 1.2) {
   const us = simplify(presimplify(usRaw as unknown as Topology), detail) as Topology<{
     states: GeometryCollection;
     nation: GeometryCollection;
   }>;
-  const draw = geoPath().digits(1);
+  const draw = geoPath().digits(0);
   return {
     nation: draw(feature(us, us.objects.nation)) ?? '',
     borders: draw(mesh(us, us.objects.states, (a, b) => a !== b)) ?? '',

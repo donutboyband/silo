@@ -1,35 +1,22 @@
 ---
-// One silo's page: its name, description, sign-up box and follow icons, then
-// its projects (a list, or a map when they are places). Used inside the
-// full-screen panels (Silo version) and under the drawing (Mycelium version).
+// One silo's page, shown beside its colony on the homepage drawing: its name,
+// description, sign-up box and follow icons, then its projects. One narrow
+// column, scaled down by --fit until it fits on screen.
 import type { Pillar } from '../data/catalog';
 import { socialMenus, accountFor } from '../data/social-menus';
-import PlaceMap from './PlaceMap.astro';
 import SocialIcon from './SocialIcon.astro';
+import { linkAttrs } from '../lib/links';
 
 interface Props {
   p: Pillar;
-  i: number;
-  /** keeps ids unique when a page shows the same silo twice */
-  idPrefix: string;
-  /** show the #01-style numbers */
-  numbers?: boolean;
-  /** a narrow, one-column layout that fits beside a drawing */
-  compact?: boolean;
-  /** places get a map; false lists them instead (when a map is shown elsewhere) */
-  map?: boolean;
   /** false: leave the projects out entirely (just the summary) */
   projects?: boolean;
 }
-const { p, i, idPrefix, numbers = true, compact = false, map = true, projects = true } = Astro.props;
-const isExternal = (url?: string) => !!url?.startsWith('http');
+const { p, projects = true } = Astro.props;
 ---
 
-<div class:list={['silo-detail', { compact }]}>
-<h2 class="panel-title row" id={`${idPrefix}-${p.key}-title`}>
-  {numbers && (<span class="tag"><i>#</i>{String(i + 1).padStart(2, '0')}</span>)}
-  <span class="name">{p.name}</span>
-</h2>
+<div class="silo-detail">
+<h2 class="panel-title" id={`focus-${p.key}-title`}>{p.name}</h2>
 
 <div class="panel-intro">
   <p class="panel-desc">{p.desc}</p>
@@ -39,10 +26,10 @@ const isExternal = (url?: string) => !!url?.startsWith('http');
     <form class="optin-form" novalidate>
       <p class="optin-title">Get {p.name} updates</p>
       <input type="hidden" name="list" value={p.key} />
-      <label class="sr" for={`${idPrefix}-optin-${p.key}`}>Email address</label>
-      <div class="optin-row">
+      <label class="sr" for={`focus-optin-${p.key}`}>Email address</label>
+      <div class="signup-row">
         <input
-          id={`${idPrefix}-optin-${p.key}`}
+          id={`focus-optin-${p.key}`}
           type="email"
           name="email"
           placeholder="you@email.com"
@@ -51,7 +38,7 @@ const isExternal = (url?: string) => !!url?.startsWith('http');
         />
         <button type="submit">Sign up</button>
       </div>
-      <p class="optin-note" role="status"></p>
+      <p class="signup-note" role="status"></p>
     </form>
 
     <div class="follow">
@@ -60,7 +47,7 @@ const isExternal = (url?: string) => !!url?.startsWith('http');
         const acct = accountFor(m, p.socialName);
         const name = `${p.socialName} on ${m.title}`;
         return acct?.url ? (
-          <a class="follow-icon" href={acct.url} target="_blank" rel="noopener" aria-label={name}>
+          <a class="follow-icon" {...linkAttrs(acct.url)} aria-label={name}>
             <SocialIcon kind={m.id} />
           </a>
         ) : (
@@ -73,27 +60,16 @@ const isExternal = (url?: string) => !!url?.startsWith('http');
   </div>
 </div>
 
-{/* Silos whose items are places (DeCamp) get a map; the rest a list. */}
-{!projects ? null : map && p.items.some((it) => it.at) ? (
-  <PlaceMap id={`${idPrefix}-${p.key}`} items={p.items} />
-) : (
-<ul class:list={['items', { plain: !numbers }]}>
+{projects && (
+<ul class="items">
   {p.items.map((it) => {
     const Tag = it.soon || !it.url ? 'span' : 'a';
     return (
       <li>
-        <Tag
-          class:list={['item', { soon: it.soon }]}
-          href={Tag === 'a' ? it.url : undefined}
-          target={Tag === 'a' && isExternal(it.url) ? '_blank' : undefined}
-          rel={Tag === 'a' && isExternal(it.url) ? 'noopener' : undefined}
-        >
-          <span class="row item-head">
-            {numbers && (<span class="tag"><i>#</i>{it.no}</span>)}
-            <span class="item-name">
-              {it.name}
-              {Tag === 'a' && <span class="arr">↗</span>}
-            </span>
+        <Tag class:list={['item', { soon: it.soon }]} {...(Tag === 'a' ? linkAttrs(it.url) : {})}>
+          <span class="item-name">
+            {it.name}
+            {Tag === 'a' && <span class="arr">↗</span>}
           </span>
           <span class="item-desc">{it.soon ? `Soon. ${it.desc}` : it.desc}</span>
         </Tag>
@@ -111,25 +87,16 @@ const isExternal = (url?: string) => !!url?.startsWith('http');
 
 </div>
 <script>
-  // ---------- Per-silo sign-up forms (inside each open silo) ----------
-  document.querySelectorAll<HTMLFormElement>('.optin-form').forEach((form) => {
-    const out = form.querySelector<HTMLElement>('.optin-note')!;
-    const email = form.querySelector<HTMLInputElement>('input[type="email"]')!;
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      if (!email.checkValidity()) {
-        out.textContent = 'That email address doesn’t look right.';
-        email.focus();
-      } else {
-        // TODO: send to the newsletter service (list: form.list.value) once one is chosen.
-        out.textContent = 'Thanks! Sign-ups aren’t live yet, so nothing was sent.';
-      }
-    });
-  });
-
+  import { wireSignup } from '../scripts/signup';
+  document.querySelectorAll<HTMLFormElement>('.optin-form').forEach((form) => wireSignup(form));
 </script>
 
 <style>
+  /* Sizes scale by --fit (1 = full size), which the page lowers step by step
+     until the whole panel fits on screen without scrolling. */
+  .silo-detail {
+    --f: var(--fit, 1);
+  }
   h2,
   p,
   ul {
@@ -138,96 +105,68 @@ const isExternal = (url?: string) => !!url?.startsWith('http');
     font: inherit;
     list-style: none;
   }
-  .tag {
-    color: inherit;
-    opacity: 0.6;
-  }
 
   .panel-title {
-    font-size: clamp(40px, calc((100vw - 60px) / 11), 160px);
-    font-weight: 800;
-    line-height: 0.94;
-    letter-spacing: -0.01em;
-    text-transform: uppercase;
+    font-size: calc(clamp(30px, 3.6vw, 60px) * var(--f));
   }
-  /* description on the left, sign-up + follow on the right */
   .panel-intro {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
-    gap: clamp(20px, 4vw, 64px);
-    align-items: start;
-    margin-top: clamp(16px, 2.5vw, 36px);
+    gap: calc(14px * var(--f));
+    margin-top: calc(12px * var(--f));
   }
+  .panel-desc {
+    font-size: calc(clamp(15px, 1.25vw, 19px) * var(--f));
+    font-weight: 600;
+    line-height: 1.25;
+    font-variation-settings: 'wdth' 100;
+  }
+
   .optin {
-    padding: 16px;
+    padding: calc(12px * var(--f));
     border: 2px solid var(--bg);
     font-variation-settings: 'wdth' 100;
   }
   .optin-title {
-    margin: 0 0 10px;
-    font-size: 14px;
+    margin: 0 0 calc(10px * var(--f));
+    font-size: calc(14px * var(--f));
     font-weight: 800;
     text-transform: uppercase;
   }
-  .optin-row {
-    display: flex;
-    gap: 8px;
+  /* on the silo's colour: black box and button */
+  .optin-form {
+    --field: var(--bg);
+    --field-bg: transparent;
+    --field-dim: rgb(0 0 0 / 0.5);
+    --btn-bg: var(--bg);
+    --btn-fg: var(--c);
   }
-  .optin-row input {
-    flex: 1;
-    min-width: 0;
-    padding: 9px 10px;
-    border: 2px solid var(--bg);
-    background: transparent;
-    color: var(--bg);
-    font: inherit;
-    font-size: 14px;
-    font-weight: 500;
+  .signup-row input,
+  .signup-row button {
+    font-size: calc(14px * var(--f));
+    padding-block: calc(9px * var(--f));
   }
-  .optin-row input::placeholder {
-    color: rgb(0 0 0 / 0.5);
-  }
-  .optin-row input:focus-visible {
+  .signup-row input:focus-visible,
+  .signup-row button:focus-visible {
     outline: 2px solid var(--bg);
     outline-offset: 2px;
   }
-  .optin-row button {
-    all: unset;
-    cursor: pointer;
-    padding: 9px 14px;
-    background: var(--bg);
-    color: var(--c);
-    font-size: 14px;
-    font-weight: 800;
-    text-transform: uppercase;
-  }
-  .optin-row button:hover {
+  .signup-row button:hover {
     color: var(--fg);
   }
-  .optin-row button:focus-visible {
-    outline: 2px solid var(--bg);
-    outline-offset: 2px;
-  }
-  .optin-note {
-    margin: 8px 0 0;
-    font-size: 13px;
-    font-weight: 500;
-    line-height: 1.4;
-  }
-  .optin-note:empty {
-    display: none;
+  .signup-note {
+    margin-top: 8px;
   }
   .follow {
     display: flex;
     align-items: center;
     gap: 14px;
-    margin-top: 14px;
-    padding-top: 12px;
+    margin-top: calc(10px * var(--f));
+    padding-top: calc(8px * var(--f));
     border-top: 1px solid rgb(0 0 0 / 0.25);
   }
   .follow-label {
     margin-right: auto;
-    font-size: 14px;
+    font-size: calc(14px * var(--f));
     font-weight: 800;
     text-transform: uppercase;
   }
@@ -235,8 +174,8 @@ const isExternal = (url?: string) => !!url?.startsWith('http');
     display: inline-flex;
   }
   .follow-icon :global(svg) {
-    width: 24px;
-    height: 24px;
+    width: calc(24px * var(--f));
+    height: calc(24px * var(--f));
   }
   a.follow-icon:hover {
     color: var(--fg);
@@ -245,22 +184,9 @@ const isExternal = (url?: string) => !!url?.startsWith('http');
     opacity: 0.4;
     cursor: default;
   }
-  @media (max-width: 720px) {
-    .panel-intro {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  .panel-desc {
-    max-width: 34ch;
-    font-size: clamp(18px, 2.2vw, 32px);
-    font-weight: 600;
-    line-height: 1.25;
-    font-variation-settings: 'wdth' 100;
-  }
 
   .items {
-    margin-top: clamp(28px, 5vw, 72px);
+    margin-top: calc(16px * var(--f));
     border-top: 2px solid var(--bg);
   }
   .items li {
@@ -268,28 +194,22 @@ const isExternal = (url?: string) => !!url?.startsWith('http');
   }
   .item {
     display: grid;
-    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-    align-items: center;
-    gap: 8px 32px;
-    padding: 14px 0 16px;
-  }
-  .item-head {
-    flex-wrap: nowrap;
-    font-size: clamp(30px, 5vw, 80px);
-    font-weight: 800;
-    line-height: 0.95;
-    text-transform: uppercase;
+    gap: calc(4px * var(--f));
+    padding: calc(9px * var(--f)) 0 calc(10px * var(--f));
   }
   .item-name {
     min-width: 0;
+    font-size: calc(clamp(20px, 2vw, 30px) * var(--f));
+    font-weight: 800;
+    line-height: 0.95;
+    text-transform: uppercase;
   }
   .arr {
     font-size: 0.6em;
     margin-left: 0.15em;
   }
   .item-desc {
-    max-width: 52ch;
-    font-size: clamp(14px, 1.3vw, 19px);
+    font-size: calc(13px * var(--f));
     font-weight: 500;
     line-height: 1.4;
     font-variation-settings: 'wdth' 100;
@@ -304,88 +224,13 @@ const isExternal = (url?: string) => !!url?.startsWith('http');
 
   .more {
     display: inline-block;
-    margin-top: 28px;
-    font-size: clamp(18px, 2.4vw, 30px);
+    margin-top: calc(14px * var(--f));
+    font-size: calc(16px * var(--f));
     font-weight: 800;
     text-transform: uppercase;
     border-bottom: 2px solid currentColor;
   }
   .more:hover {
     color: var(--fg);
-  }
-
-  @media (max-width: 720px) {
-    .item {
-      grid-template-columns: 1fr;
-    }
-    .item-desc {
-      padding-left: calc(1.7rem + 0.3em);
-    }
-    /* no numbers to line up with */
-    .plain .item-desc {
-      padding-left: 0;
-    }
-  }
-
-  /* ---------- compact: one column, beside a drawing ----------
-     Sizes scale by --fit (1 = full size), which the page lowers step by step
-     until the whole panel fits on screen without scrolling. */
-  .compact {
-    --f: var(--fit, 1);
-  }
-  .compact .panel-title {
-    font-size: calc(clamp(30px, 3.6vw, 60px) * var(--f));
-  }
-  .compact .panel-intro {
-    grid-template-columns: 1fr;
-    gap: calc(14px * var(--f));
-    margin-top: calc(12px * var(--f));
-  }
-  .compact .panel-desc {
-    max-width: none;
-    font-size: calc(clamp(15px, 1.25vw, 19px) * var(--f));
-  }
-  .compact .optin {
-    padding: calc(12px * var(--f));
-  }
-  .compact .optin-title,
-  .compact .follow-label {
-    font-size: calc(14px * var(--f));
-  }
-  .compact .optin-title {
-    margin-bottom: calc(10px * var(--f));
-  }
-  .compact .optin-row input,
-  .compact .optin-row button {
-    font-size: calc(14px * var(--f));
-    padding-block: calc(9px * var(--f));
-  }
-  .compact .follow {
-    margin-top: calc(10px * var(--f));
-    padding-top: calc(8px * var(--f));
-  }
-  .compact .follow-icon :global(svg) {
-    width: calc(24px * var(--f));
-    height: calc(24px * var(--f));
-  }
-  .compact .items {
-    margin-top: calc(16px * var(--f));
-  }
-  .compact .item {
-    grid-template-columns: 1fr;
-    gap: calc(4px * var(--f));
-    padding: calc(9px * var(--f)) 0 calc(10px * var(--f));
-  }
-  .compact .item-head {
-    font-size: calc(clamp(20px, 2vw, 30px) * var(--f));
-  }
-  .compact .item-desc {
-    max-width: none;
-    padding-left: 0;
-    font-size: calc(13px * var(--f));
-  }
-  .compact .more {
-    margin-top: calc(14px * var(--f));
-    font-size: calc(16px * var(--f));
   }
 </style>
