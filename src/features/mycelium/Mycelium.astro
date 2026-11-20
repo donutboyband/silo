@@ -9,10 +9,12 @@
 //
 // The view passes one <FocusPanel> per silo in the default slot.
 import { createHash } from 'node:crypto';
-import { label, type PillarKey } from '@shared/content/catalog';
+import { label, pillars, type PillarKey } from '@shared/content/catalog';
 import { routes, titleFor } from '@shared/content/routes';
 import { drawings } from './lib/layouts';
 import { usPaths } from './lib/usmap';
+import { siloArt } from './lib/silo-art';
+import { sandboxArt } from './lib/sandbox-art';
 import MyceliumNet from './MyceliumNet.astro';
 
 interface Props {
@@ -23,6 +25,12 @@ const { focus } = Astro.props;
 
 // DeCamp's projects are places, so its roots grow onto a US map.
 const us = usPaths();
+// Lo-fi drawings behind other nodes (placed in lib/layouts.ts by id):
+// Silo Recording stands on a farm silo, Sandbox sits in a sandbox.
+const arts = [
+  { id: 'silo-art', art: siloArt() },
+  { id: 'sandbox-art', art: sandboxArt(pillars.find((p) => p.key === 'label')!.items) },
+];
 
 // Before first paint: a first visit this session gets the way in (the discs
 // start overlapped). Returning visitors, a silo's own URL, reduced motion and
@@ -45,9 +53,10 @@ Astro.csp?.insertScriptHash(`sha256-${createHash('sha256').update(introCheck).di
 >
   <script is:inline set:html={introCheck} />
 
-  {/* DeCamp's map, drawn once and placed in each drawing with <use>. Its
-      look is set here as attributes, coloured by currentColor, because
-      selectors don't reach into a <use>. */}
+  {/* The backdrops (DeCamp's map, the silo, the sandbox), drawn once and
+      placed in each drawing with <use>. Their look is set here as
+      attributes, coloured by currentColor, because selectors don't reach
+      into a <use>. Only the outline draws itself in (pathLength 1). */}
   <svg class="myc-defs" width="0" height="0" aria-hidden="true">
     <defs>
       <g id="usmap">
@@ -75,6 +84,46 @@ Astro.csp?.insertScriptHash(`sha256-${createHash('sha256').update(introCheck).di
           stroke-dashoffset="0"
         />
       </g>
+      {
+        arts.map(({ id, art }) => (
+          <g id={id}>
+            <path d={art.body} fill="currentColor" fill-opacity="0.05" stroke="none" />
+            <path
+              d={art.detail}
+              vector-effect="non-scaling-stroke"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="0.8"
+              stroke-opacity="0.35"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            {art.dots && (
+              <path
+                d={art.dots}
+                vector-effect="non-scaling-stroke"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-opacity="0.45"
+                stroke-linecap="round"
+              />
+            )}
+            <path
+              d={art.outline}
+              pathLength="1"
+              vector-effect="non-scaling-stroke"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.3"
+              stroke-opacity="0.7"
+              stroke-dasharray="1 2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </g>
+        ))
+      }
     </defs>
   </svg>
 
@@ -154,15 +203,15 @@ Astro.csp?.insertScriptHash(`sha256-${createHash('sha256').update(introCheck).di
     stroke-dashoffset: 0;
   }
 
-  /* DeCamp's map: hidden until its node opens. Colour and dash offset are
-     inherited by the paths inside the <use>. */
-  .myc .usmap {
+  /* backdrops (DeCamp's map, Silo Recording's silo): hidden until the node
+     opens. Colour and dash offset are inherited by the paths inside the <use>. */
+  .myc .backdrop {
     color: var(--c);
     stroke-dashoffset: 0;
     visibility: hidden;
     opacity: 0;
   }
-  .myc .open .usmap {
+  .myc .open .backdrop {
     visibility: visible;
     opacity: 1;
   }

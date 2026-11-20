@@ -8,7 +8,7 @@
 import type { Pillar, PillarKey } from '@shared/content/catalog';
 import { placeOnMap } from './usmap';
 
-type Pt = { x: number; y: number };
+export type Pt = { x: number; y: number };
 
 export interface Line {
   d: string;
@@ -42,8 +42,9 @@ export interface Node {
   y: number;
   /** where the node's name sits, relative to its centre */
   labelDy: number;
-  /** where this node's US map sits, if its projects are places (DeCamp) */
-  map?: { x: number; y: number; s: number };
+  /** a drawing behind the colony, shown while it's open: DeCamp's US map
+   * (placed by its top-left corner) or Silo Recording's silo (by the node) */
+  backdrop?: { id: string; x: number; y: number; s: number };
   lines: Line[];
   tips: Tip[];
 }
@@ -57,7 +58,7 @@ export interface Network {
   nodes: Node[];
 }
 
-function rng(seed: number) {
+export function rng(seed: number) {
   let a = seed >>> 0;
   return () => {
     a = (a + 0x6d2b79f5) >>> 0;
@@ -81,7 +82,7 @@ const pack = (ns: number[]) =>
 
 /** A polyline as one relative lineto run. The steps are taken between the
  * rounded points, so rounding doesn't add up along the line. */
-const poly = (pts: Pt[]) => {
+export const poly = (pts: Pt[]) => {
   const q = pts.map((p) => ({ x: r1(p.x), y: r1(p.y) }));
   const steps = q.slice(1).flatMap((p, i) => [p.x - q[i].x, p.y - q[i].y]);
   return `M${pack([q[0].x, q[0].y])}l${pack(steps)}`;
@@ -108,6 +109,10 @@ export function grow(
     /** radius of the node discs (they carry the silo marks) */
     nodeR?: number;
     labels?: 'side' | 'stack';
+    /** per silo: a drawing (by its id in Mycelium.astro) centred on the node,
+     * at scale s. spots: where its projects sit in the drawing, in order
+     * (relative to the node, before scaling), e.g. Sandbox's toys. */
+    art?: Partial<Record<PillarKey, { id: string; s: number; spots?: Pt[] }>>;
     /** per silo: a US map box (top-left corner and scale) its places land on */
     maps?: Partial<Record<PillarKey, { x: number; y: number; s: number }>>;
   },
@@ -204,12 +209,26 @@ export function grow(
     const spread = Math.min(2.4, 0.72 * n);
     const DRAW = 900;
 
-    // A node whose projects are places draws a map first; roots grow after it.
+    // A node with a backdrop (a map, a drawing) draws it first; roots grow after.
     const box = layout.maps?.[p.key];
-    const lag = box ? 350 : 0;
+    const art = layout.art?.[p.key];
+    const lag = box || art ? 350 : 0;
 
-    // where each project sits: on the map at its real spot, or fanned outward
+    // where each project sits: on the map at its real spot, on its spot in
+    // the drawing (a toy in the sandbox), or fanned outward
     const tipPts = p.items.map((it, k) => {
+      const spot = art?.spots?.[k];
+      if (spot) {
+        const pt = { x: o.x + spot.x * art!.s, y: o.y + spot.y * art!.s };
+        return {
+          it,
+          ang: Math.atan2(pt.y - o.y, pt.x - o.x),
+          pt,
+          right: !stack && spot.x > 0,
+          left: !stack && spot.x < 0,
+          above: stack ? false : undefined,
+        };
+      }
       if (box && it.at) {
         const m = placeOnMap(it.at);
         const pt = { x: box.x + m.x * box.s, y: box.y + m.y * box.s };
@@ -254,9 +273,14 @@ export function grow(
           if (inside(end)) limb(from, end, wd * 0.55, delay + t * (420 + depth * 120), depth - 1);
         }
       };
-      // Places on a map get one plain straight line each: the map is busy enough.
+      // Places on a map get one plain straight line each, and toys in a
+      // drawing one gentle unforked root: the backdrop is busy enough.
       tipPts.forEach(({ pt }, k) =>
-        box ? lines.push({ d: `M${P(o)} L${P(pt)}`, w: 2, delay: lag + k * 80, dur: 700 }) : limb(o, pt, 3.2, lag + k * 80, 2),
+        box
+          ? lines.push({ d: `M${P(o)} L${P(pt)}`, w: 2, delay: lag + k * 80, dur: 700 })
+          : art?.spots?.[k]
+            ? limb(o, pt, 2.4, lag + k * 80, 0)
+            : limb(o, pt, 3.2, lag + k * 80, 2),
       );
     }
 
@@ -307,7 +331,7 @@ export function grow(
       x: o.x,
       y: o.y,
       labelDy: labelDyFor(o),
-      map: box,
+      backdrop: box ? { id: 'usmap', ...box } : art ? { id: art.id, x: o.x, y: o.y, s: art.s } : undefined,
       lines,
       tips,
     };

@@ -70,9 +70,10 @@ export function initMycelium(root: HTMLElement) {
       col.classList.toggle('open', open);
       col.querySelector('.node')!.setAttribute('aria-expanded', String(open));
       if (reduce.matches || !col.ownerSVGElement!.checkVisibility()) return;
-      // a map (DeCamp) outlines itself first, then the roots grow across it.
-      // stroke-dashoffset set on the <use> is inherited by the outline inside.
-      col.querySelectorAll<SVGUseElement>('.usmap').forEach((m) => {
+      // a backdrop (DeCamp's map, the silo) outlines itself first, then the
+      // roots grow across it. stroke-dashoffset set on the <use> is inherited
+      // by the outline inside.
+      col.querySelectorAll<SVGUseElement>('.backdrop').forEach((m) => {
         m.animate({ strokeDashoffset: open ? [1.5, 0] : [0, 1.5] }, open ? { duration: 900, easing: 'ease-out' } : { duration: 350 });
         m.animate({ opacity: open ? [0, 1] : [1, 0] }, open ? { duration: 500 } : { duration: 350 });
       });

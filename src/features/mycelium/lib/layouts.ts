@@ -3,6 +3,7 @@
 // where DeCamp's US map goes.
 import { pillars } from '@shared/content/catalog';
 import { grow, type Network } from './grow';
+import { sandboxSlots } from './sandbox-art';
 
 export interface Drawing {
   id: 'wide' | 'tall';
@@ -28,6 +29,7 @@ export const drawings: Drawing[] = [
       nodeR: 42,
       // top-right quarter; the DeCamp node sits out west, so its roots cross the country
       maps: { decamp: { x: 500, y: 12, s: 0.5 } },
+      art: { recording: { id: 'silo-art', s: 0.78 }, label: { id: 'sandbox-art', s: 1.15, spots: sandboxSlots } },
     }),
     ring: 120,
   },
@@ -48,6 +50,7 @@ export const drawings: Drawing[] = [
       charW: 13.2,
       labels: 'stack',
       maps: { decamp: { x: 20, y: 300, s: 0.574 } },
+      art: { recording: { id: 'silo-art', s: 0.95 }, label: { id: 'sandbox-art', s: 1.12, spots: sandboxSlots } },
     }),
     ring: 130,
   },

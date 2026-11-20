@@ -67,6 +67,8 @@ export interface Item {
   year?: string;
   /** For places (DeCamp issues): puts a dot on the map. [latitude, longitude] */
   at?: [number, number];
+  /** For Sandbox's projects: the toy it's drawn as in the sandbox. */
+  toy?: 'house' | 'record';
   /** Which side of its dot the map label sits on (default right). */
   labelSide?: 'left' | 'right' | 'above' | 'below';
 }
@@ -157,12 +159,14 @@ export const pillars: Pillar[] = [
       {
         no: '1',
         name: 'Linernotes',
+        toy: 'record',
         desc: 'The liner notes streaming forgot.',
         url: 'https://sleeve-smoky.vercel.app/',
       },
       {
         no: '2',
         name: 'Maison',
+        toy: 'house',
         desc: 'A filter house toy.',
         url: 'https://playmaison.app',
       },
